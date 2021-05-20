@@ -325,16 +325,8 @@ for (row in 1:nrow(NOAAStationData))
 {
     NOAAStationData$ColorHex[row] <- GetColorHex(GetColor(Station_ID,"Stage",NOAAStationData$Value[row]))
 }
-
     return(NOAAStationData)
-
 }
-
-
-
-
-
-
 
 ###### ###### ######  ###
 ###### END API FUNCTIONS #
@@ -441,9 +433,6 @@ GetCurrentReading <- function(Station_ID,Parameter,df)
 #Gets the correct Colors, and Current Readings for NOAA Stations and WR Stations for use in the map and Gauge plot. 
 GetAllStations <- function()
 {
-    
-    
-    
     NOAAStations <- NOAAStationsList %>%
         mutate(description = "")%>%
         mutate(ColorHex = "")%>%
@@ -487,7 +476,7 @@ output$Map <- renderLeaflet({
         addMarkers(data = NOAAData, lng = ~Longitude, lat = ~Latitude, layerId = ~ station_id, label = ~station_name, icon = ~IconSet[ColorHex])
 })
 
-
+d
 
 
 ## Reacts to Map Marker Click to make data for the modal 
@@ -499,11 +488,9 @@ observeEvent(input$Map_marker_click, ignoreNULL = TRUE,ignoreInit = TRUE,{
     {
         updateSelectInput(session, "ParamSelect", choices = c("Stage","Flow"), selected = "Stage")
         StationDataReactive$df <- GetNOAAData(click$id,"Stage")
-
     }
     else
     {
-
        # If the station should show enterococuss by default, this will be the OG modal data, otherwise, E Coli 
        if(click$id %in% EnteroStations)
        {
@@ -514,9 +501,9 @@ observeEvent(input$Map_marker_click, ignoreNULL = TRUE,ignoreInit = TRUE,{
        {
         updateSelectInput(session, "ParamSelect", choices = ColiParameters, selected = "E Coli Concentration")
         StationDataReactive$df <- GetWRData(click$id,"E Coli Concentration")
+       }
     }
-    }
-    print("Done")
+
     
 })
 
