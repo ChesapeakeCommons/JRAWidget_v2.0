@@ -1,0 +1,9 @@
+station_id,Parameter,ValueOne,ValueLabelOne,ValueOneColor,ValueTwo,ValueLabelTwo,ValueTwoColor
+RICV2,Stage,5,Caution,Yellow,7,High Caution,Red
+MTCV2,Stage,5.5,High Caution,Red,,,
+SVEV2,Stage,8.8,High Caution,Red,,,
+RMDV2,Stage,5,Caution,Yellow,7,High Caution,Red
+svev2,Stage,6,High Caution,Red,,,
+HRKV2,Stage,7,High Caution,Red,,,
+BNNV2,Stage,6,High Caution,Red,,,
+PYAV2,Stage,6,High Caution,Red,,,

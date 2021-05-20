@@ -1,0 +1,39 @@
+station_id,station_name,Latitude,Longitude,Type,CurrentReading,Color,Image 
+CKHV2,"Chickahominy River near Providence Forge, VA",37.436258,-77.060803,1,6.18,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+HRKV2,"James River at Holcomb Rock, VA",37.501251,-79.262529,1,7.99,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+MTCV2,"Appomattox River at Matoca, Va",37.225151,-77.475263,1,4.39,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+FRMV2,"Appomattox River at Farmville, VA",37.307097,-78.388607,1,6.27,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+RICV2,Richmond Locks,37.525,-77.421111,1,2.82,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+JSFV2,Jamestown/Scottland Ferry,37.220139,-76.791453,1,0.62,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+SWPV2,Sewells Point,36.946667,-76.33,1,0.94,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+FTMV2,Fort Monroe,37.001944,-76.315,1,0.97,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+RMDV2,James River (VA) at Richmond-Westham,37.563056,-77.547222,1,8.24,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+CARV2,James River (VA) at Cartersville,37.670833,-78.086111,1,7.64,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+SVEV2,James River (VA) at Scottsville ,37.797222,-78.491667,1,8.09,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+BNNV2,James River (VA) at Buchanan,37.530556,-79.679167,1,5.45,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+BVSV2,Maury River near Buena Vista,37.7625,-79.391667,1,3.39,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+PYAV2,Rivanna River at Palmyra,37.857778,-78.266111,1,4.16,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+A03,Appomattox River at Petersburg,37.23384,-77.41257,0,1,Grey,https://dev.images.waterreporter.org/1393/b026fddbbafd414c866abb08b88c2860_original.jpg
+M05,Maury River at Ben Salem Wayside,37.75346,-79.39232,0,6,Grey,https://dev.images.waterreporter.org/2/0e9a3ae68f71476aa66ecb2d4e58995b_original.jpg
+C05,Chickahominy at Grapevine Bridge,37.55197,-77.27115,0,1,Grey,https://dev.images.waterreporter.org/2/5ce3875ca8fa4082be2ce3156a6afba0_original.jpg
+J08,James River at Rocketts Landing,37.5186,-77.41663,0,6,Grey,https://dev.images.waterreporter.org/2/c874b37c822a43858a80ddeb8bdbbc90_original.jpg
+J03,James River at Riverside Beach,37.04682,-76.4991,0,0,Grey,https://dev.images.waterreporter.org/2/c987b314ba87487183e9fd49d89e4d13_original.jpg
+J04,James River at Denbigh Boat Ramp,37.12364,-76.5685,0,3,Grey,https://dev.images.waterreporter.org/2/9bfc95e7469f44fe988950190aedc798_original.jpg
+H02,Hampton River Marina,37.02097,-76.3434,0,0,Grey,https://dev.images.waterreporter.org/2/6edecec9f205417a9094f0b523e04e02_original.jpg
+P05,Powhatan Creek,37.23765,-76.76837,0,0,Grey,https://dev.images.waterreporter.org/1393/c7e20ce5428846a4af31ad69881aacd1_original.jpeg
+J21,James River at Reedy Creek,37.52439,-77.46958,0,34,Grey,https://dev.images.waterreporter.org/1393/39537e1612cd4244807dbacafc29e922_original.JPG
+J24,James River at Huguenot Flatwater,37.56054,-77.54578,0,8,Grey,https://dev.images.waterreporter.org/2/cc1d74dba6a24a2baa9e1a988cfd5edf_original.JPG
+J22,James River at 42nd Street,37.52677,-77.47569,0,27,Grey,https://dev.images.waterreporter.org/2/7020658a3f0b4bacb70eff9877885137_original.jpg
+R10,Rivanna River at Crofton,37.91883,-78.29778,0,8,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+J23,James River at Pony Pasture,37.55159,-77.52042,0,2,Grey,https://dev.images.waterreporter.org/1393/ef5abf9fed7e474682556e10632bb1d3_original.JPG
+R20,Rivanna at Riverview Park,38.02335,-78.45388,0,3,Grey,https://dev.images.waterreporter.org/1393/8036af9e0b08451aa7e45a450a54bc42_original.jpg
+DC01,Deep Creek,37.08028,-76.5231,0,1,Grey,https://dev.images.waterreporter.org/2/74cbd88a19514ee2988eb5af87e0cd3c_original.JPG
+J02,James River Fishing Pier,37.01292,-76.457,0,0,Grey,https://dev.images.waterreporter.org/2/8b1b4a9665b1485ea51a3759e105a74e_original.jpg
+R23,Rivanna River at Darden Towe Park,38.04238,-78.454,0,0,Grey,https://dev.images.waterreporter.org/2/58c580bf8a8348bd94a94ce46cf68511_original.jpg
+C01,Chickahominy at Chickahominy Riverfront Park,37.26474,-76.87471,0,0,Grey,https://dev.images.waterreporter.org/2/0972e5bc307b42df90a38425ca098088_original.jpg
+J26,James River at Robious Landing,37.55921,-77.64666,0,34,Grey,https://dev.images.waterreporter.org/2/980607794b67486a8f5c8b165d1cdba5_original.jpeg
+A08,Appomattox River at Farmville,37.3074,-78.38898,0,134,Grey,https://dev.images.waterreporter.org/2/a468143781824be59015b8762e786a45_original.jpeg
+J29,James River at New Canton,37.70972,-78.29982,0,134,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+J09,James River at Osborne Landing,37.40097,-77.38705,0,648.8,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+H01,James River at Hardware,37.74027,-78.40782,0,34,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg
+J05,James River at Jamestown Beach,37.2239,-76.78861,0,50,Grey,https://live.staticflickr.com/2920/14516694421_a1abca7688_b.jpg

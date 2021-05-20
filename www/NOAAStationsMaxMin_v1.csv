@@ -1,0 +1,15 @@
+station_id,Parameter ,Min,Max
+RICV2,Stage,-2,15
+MTCV2,Stage,0,13
+FRMV2,Stage,0,20
+JSFV2,Stage,-1,4.5
+CKHV2,Stage,0,10
+SWPV2,Stage,-1,5.5
+FTMV2,Stage,-1,5.5
+RMDV2,Stage,0,15
+CARV2,Stage,0,20
+SVEV2,Stage,0,20
+HRKV2,Stage,0,20
+BNNV2,Stage,0,20
+BVSV2,Stage,0,15
+PYAV2,Stage,0,20
