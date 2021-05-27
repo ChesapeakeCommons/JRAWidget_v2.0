@@ -22,6 +22,7 @@ library(ggimage)
 library(rlist)
 library(httr)
 library(jsonlite)
+library(plotrix)
 
 
 
@@ -52,6 +53,7 @@ shinyjs::useShinyjs()
 ####### UI
 ui <- fluidPage(theme = "styler.css",
                 
+               # add_busy_spinner(spin = "fading-circle"),
                 
                 #Header
                 div(id = "header",
@@ -63,7 +65,11 @@ ui <- fluidPage(theme = "styler.css",
                     
                 ),     
                 
+                ### Map 
                 leafletOutput("Map", height = 'calc(100vh - 75px)', width = '100%'),
+                
+
+                ### Temperature Select
                 div( class = "temp-overlay-container",
                      div (class = "temp-overlay",
                           div(class = "temp-title", HTML("Temperature Unit")),
@@ -72,6 +78,7 @@ ui <- fluidPage(theme = "styler.css",
                           )
                      )
                 ),
+                
                 
                 # Key overlay 
                 div( class= "key-overlay-container",
@@ -85,7 +92,7 @@ ui <- fluidPage(theme = "styler.css",
 # SERVER
 server <- function(input, output,session) {
     
-    
+
     
 ###### ###### ###### ###### ###### ####
 ###### IMPORTS AND VAR DECLRATIONS ####
@@ -133,6 +140,8 @@ IconSet <- iconList(
 #StationDataReactive represents all the data for the selected station
 StationDataReactive <- reactiveValues(df = data.frame())
 
+RenderFlag <- reactiveValues(X = as.character("FALSE"))
+
 #List of Icon Colors 
 IconColors <- c("Green", "Grey", "Red", "Yellow")    
 #List of aspect ratios for threshold text 
@@ -146,14 +155,12 @@ EnteroParameters <- c("Enterococcus Bacteria Concentration", "Air Temperature", 
 ColiParameters <- c("E Coli Concentration", "Air Temperature", "Water Temperature", "Turbidity")
 
 #Station names that should sho
-EnteroStations <- c("J05","P05","C01")
+EnteroStations <- c("J05","P05","C01", "VDH-AP","VDH-HTP","VDH-KL")
 
 ##!!List of max values used for WR data - will likely drop
 MaxValue <- c(2419,2419,45,50,500) 
 ##Bind of Parameters and Max Values 
 MaxParamValue <- data.frame(Parameters,MaxValue)
-
-    
 
 #Parameter Codes for API Request 
 APICode <- c(711,1690,707,708,710)
@@ -180,15 +187,14 @@ GetWRStations <- function()
     
     Request <- GET(paste("https://dev.api.waterreporter.org/stations?sets=863&geo_format=xy&access_token=",Token, sep = "")
     )
-    print(Request)
+
     jsonRequestText <- content(Request,as="text")
     parsed <- fromJSON(jsonRequestText)
     Data <- data.frame(parsed$features)
-    
+
     StationData <- data.frame(Data$raw_id,Data$name,Data$id,Data$lat,Data$lng,Data$description,Data$image_url) 
     
     #Cleaning Var Names 
-    
     colnames(StationData) <- gsub('Data.','',colnames(StationData))
     
     StationData <- StationData %>%
@@ -197,19 +203,23 @@ GetWRStations <- function()
                       "station_API_id"= id,
                       "Latitude" = lat,
                       "Longitude" = lng,
-                       "Image" = image_url)%>%
+                      "Image" = image_url)%>%
                        mutate(Type = 0)
     
     ### We need to get the colors which is a seperate per station and parameter request ###
     for (row in 1:nrow(StationData))
     {
-        URL <- paste("https://dev.api.waterreporter.org/readings?station_id=",StationData$station_API_id[row],"&parameter_id=711&limit=1&acces_token=",Token, sep = "")
+        Parameter_ID <- ifelse(StationData$station_id[row] %in% EnteroStations,1690,711)
+        
+        URL <- paste("https://dev.api.waterreporter.org/readings?station_id=",StationData$station_API_id[row],"&parameter_id=",Parameter_ID,"&limit=1&acces_token=",Token, sep = "")
         
         Request <- GET(URL)
         
         jsonRequestText <- content(Request,as="text")
         parsed <- fromJSON(jsonRequestText)
-        StationData$ColorHex[row] <- ifelse(!is.null(parsed$data$color),parsed$data$color,"#999999")
+        
+        StationData$ColorHex[row] <- as.character(ifelse(!is.null(parsed$data$color),parsed$data$color,"#999999"))
+
     }
     return(StationData)
 }
@@ -218,6 +228,8 @@ GetWRStations <- function()
 ## Returns collection date, parametervalue, and color 
 GetWRData <- function(Station_ID,ParameterName)
 {
+  print(Station_ID)
+
     ## $$ Parsing Parameter Name 
     ParameterCode <- APIParameterCodes %>%
         filter(Parameters == ParameterName)%>%
@@ -234,16 +246,57 @@ GetWRData <- function(Station_ID,ParameterName)
     
     Request <- GET(URL)
     
-    print(Request)
     jsonRequestText <- content(Request,as="text")
     parsed <- fromJSON(jsonRequestText)
     
+    print(parsed)
+
+    # Threshold <- data.frame(parsed$parameter$chart_schema$ranges$color,parsed$parameter$chart_schema$ranges$description)%>%
+    #                       rename("ColorHex" = parsed.parameter.chart_schema.ranges.color,
+    #                              "ThresholdDescription" = parsed.parameter.chart_schema.ranges.description)
+    
+
+    if(!is.null(parsed$dataset))
+    {
     Data <- data.frame(parsed$data$collection_date,parsed$data$value,parsed$data$color)%>%
                 rename("Date" = parsed.data.collection_date,
                        "Value" = parsed.data.value,
                       "ColorHex" = parsed.data.color)%>%
-               mutate(Date = as.POSIXct(Date, origin = "1970-01-01", tz = "UTC"))
+                      mutate(ColorHex = as.character(ColorHex))%>%
+                  #    mutate(ColorHex = as.character(ifelse(!is.null(ColorHex) || ColorHex == "#aaacab",ColorHex,"#999999")))%>%
+                      mutate(Date = as.POSIXct(Date, origin = "1970-01-01", tz = "UTC"))#%>%
+                   #   left_join(Threshold)
     
+    ### Getting the correct thresholds and the threshold value for charts
+    CurrentReading <- Data %>%
+                      slice_head()%>%
+                      pull(Value)
+
+    UpperBound <- parsed$parameter$chart_schema$ranges$upper_bound
+    ThresholdValueList <- UpperBound[!is.na(UpperBound)]
+    ThresholdValueListTrimmed <- list.filter(ThresholdValueList, . >= CurrentReading)
+    ThresholdValue <- as.numeric(ThresholdValueListTrimmed[which.min(abs(CurrentReading-ThresholdValueListTrimmed))])
+
+    # Checking to see if value is over threshold, setting to max threshold value
+    if(purrr::is_empty(ThresholdValue))
+    {
+    ThresholdValue <- max(ThresholdValueList)
+    }
+
+    Data$ThresholdValue <- ThresholdValue
+    Data$station_id <- Station_ID
+    
+    }
+    else
+    {
+    Data <- data.frame(matrix(ncol = 5, nrow = 1))
+    
+    headers <- c("station_id", "Date", "Value","ColorHex","ThresholdValue")
+
+    colnames(Data) <- headers
+    Data$station_id <- Station_ID
+    }
+
     return(Data)
 }
 
@@ -251,7 +304,7 @@ GetWRData <- function(Station_ID,ParameterName)
 ## NOAA DATA PARSER ##
 #Data Parcing for the NOAA sensor data from NOAA
 NOAADataRequest <- function(StationID)
-{
+{ 
     #Getting Sys.Date Year to append to data 
     Year <- format(Sys.Date(), "%Y")
     
@@ -308,24 +361,48 @@ NOAADataPull <- function()
         return(NOAAData)
     })
 }
-NOAAData <- NOAADataPull()
-
-
-
+#NOAAData <- NOAADataPull()
 
 GetNOAAData <- function(Station_ID,ParameterName)
 {
+print("start")
 NOAAStationData <- NOAAData %>%
                     filter(station_id == Station_ID)%>%
                     select(Date,ParameterName)%>%
-                    rename("Value" = Stage)%>%
+                    rename("Value" = ParameterName)%>%
                     mutate(ColorHex = "")
 
 for (row in 1:nrow(NOAAStationData))
 {
-    NOAAStationData$ColorHex[row] <- GetColorHex(GetColor(Station_ID,"Stage",NOAAStationData$Value[row]))
+    NOAAStationData$ColorHex[row] <- GetColorHex(GetColor(Station_ID,ParameterName,NOAAStationData$Value[row]))
 }
-    return(NOAAStationData)
+
+ CurrentReading <- GetCurrentReading(Station_ID,ParameterName,NOAAData)
+ Threshold <- GetThreshold(Station_ID, ParameterName)
+
+#Threshold is set to the threshold value closets to the current value because we can't show all of them due to Plotly limitations
+if(nrow(Threshold) != 0)
+{
+  ThresholdValueList <- Threshold %>%
+    select_if(~ !any(is.na(.)))%>%
+    select_if(is.numeric)%>%
+    pivot_longer(everything())%>%
+    pull(value)%>%
+    as.vector()
+  
+  #"Price is Right" rule - chooses the threshold value thats above the current reading
+  ThresholdValueList <- list.filter(ThresholdValueList, . >= CurrentReading)
+  ThresholdValue <- ThresholdValueList[which.min(abs(CurrentReading-ThresholdValueList))]
+}
+else
+{
+  ThresholdValue <- 0
+}
+
+ NOAAStationData$ThresholdValue <- ThresholdValue
+ NOAAStationData$station_id <- Station_ID
+ print("End")
+  return(NOAAStationData)
 }
 
 ###### ###### ######  ###
@@ -365,8 +442,6 @@ GetThreshold <- function(Station_ID, Parameter)
     return(Threshold)
 }
 
-
-
 # #Gets the color of the station 
 # Lets re write this at somepoint, its very shitty 
 GetColor <- function(Station_ID,Parameter,Value)
@@ -388,7 +463,6 @@ GetColor <- function(Station_ID,Parameter,Value)
                 }
             }
         }
-        
         return(Color)
 }
 
@@ -398,12 +472,23 @@ GetColorHex <- function(Color)
         filter(IconColors == Color)%>%
         mutate(ColorHex = as.character(ColorHex))%>%
         select(ColorHex)%>%
+        slice_head()%>%
         pull()
     return(Hex)
 }
 
+GetColorName <- function(ColorHex)
+{
+    ColorName <- ColorSet %>%
+        filter(ColorHex == ColorHex)%>%
+        mutate(Color = as.character(Color))%>%
+        select(Color)%>%
+        slice_head()%>%
+        pull()
+    return(ColorName)
+}
 
-#Gets the most recent reading for the
+#Gets the most recent reading
 GetCurrentReading <- function(Station_ID,Parameter,df)
 {
         CurrentValue <- df %>%
@@ -413,10 +498,33 @@ GetCurrentReading <- function(Station_ID,Parameter,df)
             filter(!is.na(.))%>%
             slice_head()%>%
             pull(Parameter)
-        
         return(CurrentValue)
 
 }
+
+#Gets the current Unit
+GetUnit <- function(inParameter,inUnit)
+{
+  
+  if(inUnit == "F")
+  {
+    Units <- c("CFU/100mL","CFU/100mL","F°","F°","NTU","ft","cfs")
+  }
+  else
+  {
+    Units <- c("CFU/100mL","CFU/100mL","C°","C°","NTU","ft","cfs")
+  }
+  Parameters <- c("E Coli Concentration","Enterococcus Bacteria Concentration","Air Temperature", "Water Temperature", "Turbidity","Stage","Flow")
+  UnitsParam <- data.frame(Units,Parameters)
+  
+  
+  Unit <- UnitsParam %>%
+    filter(Parameters == inParameter)%>%
+    select(Units)%>%
+    pull()
+  return(Unit)
+}
+
 
 ###### ###### ######  ###
 ###### END HELPER FUNCTIONS #
@@ -442,18 +550,15 @@ GetAllStations <- function()
     #We need to use a helper function, Current Reading to get the colors for the NOAA Data. 
     for (row in 1:nrow(NOAAStations))
     {
-        
         NOAAStations$CurrentReading[row] <- GetCurrentReading(NOAAStations$station_id[row],"Stage",NOAAData)
-        
-        NOAAStations$ColorHex[row] <- GetColor(NOAAStations$station_id[row],"Stage",NOAAStations$CurrentReading[row])
+        NOAAStations$ColorHex[row] <- as.character(GetColor(NOAAStations$station_id[row],"Stage",NOAAStations$CurrentReading[row]))
         
     }
     
     NOAAStations <- NOAAStations %>%
-        select(-c(CurrentReading))
-    
+                   select(-c(CurrentReading))
+
     Stations <- rbind(NOAAStations,GetWRStations())
-    
     return(Stations)
 }
 
@@ -466,7 +571,7 @@ output$Map <- renderLeaflet({
     
     NOAAData <- Stations %>%
         filter(Type == 1)  %>%
-        mutate(Color = as.factor(ColorHex))
+        mutate(Color = as.character(ColorHex))
     
     leaflet("Map")%>%
         addProviderTiles("CartoDB.VoyagerLabelsUnder", group = "Streets")%>%
@@ -476,36 +581,382 @@ output$Map <- renderLeaflet({
         addMarkers(data = NOAAData, lng = ~Longitude, lat = ~Latitude, layerId = ~ station_id, label = ~station_name, icon = ~IconSet[ColorHex])
 })
 
-d
 
 
-## Reacts to Map Marker Click to make data for the modal 
-observeEvent(input$Map_marker_click, ignoreNULL = TRUE,ignoreInit = TRUE,{
-    
-    click <- input$Map_marker_click
-    
-    if(GetStationType(click$id) == 1)
+
+
+## Reacts to Map Marker Click to make data for the modal
+observeEvent(input$Map_marker_click, ignoreNULL = TRUE,{
+
+  click <- input$Map_marker_click
+#  RenderFlag$X <- "FALSE"
+  if(GetStationType(click$id) == 1)
+  {
+    RenderFlag$X <- "FALSE"
+    updateSelectInput(session, "ParamSelect", choices = c("Stage","Flow"), selected = "Stage")
+    StationDataReactive$df <- GetNOAAData(click$id,"Stage")
+  }
+  else
+  {
+    # If the station should show enterococuss by default, this will be the OG modal data, otherwise, E Coli
+    if(click$id %in% EnteroStations)
     {
-        updateSelectInput(session, "ParamSelect", choices = c("Stage","Flow"), selected = "Stage")
-        StationDataReactive$df <- GetNOAAData(click$id,"Stage")
+      RenderFlag$X <- "FALSE"
+      updateSelectInput(session, "ParamSelect", choices = EnteroParameters, selected = "Enterococcus Bacteria Concentration")
+      StationDataReactive$df <- GetWRData(click$id,"Enterococcus Bacteria Concentration")
     }
     else
     {
-       # If the station should show enterococuss by default, this will be the OG modal data, otherwise, E Coli 
-       if(click$id %in% EnteroStations)
-       {
-            updateSelectInput(session, "ParamSelect", choices = EnteroParameters, selected = "Enterococcus Bacteria Concentration")
-            StationDataReactive$df <- GetWRData(click$id,"Enterococcus Bacteria Concentration")
-       }
-       else
-       {
-        updateSelectInput(session, "ParamSelect", choices = ColiParameters, selected = "E Coli Concentration")
-        StationDataReactive$df <- GetWRData(click$id,"E Coli Concentration")
-       }
+      RenderFlag$X <- "FALSE"
+      updateSelectInput(session, "ParamSelect", choices = ColiParameters, selected = "E Coli Concentration")
+      StationDataReactive$df <- GetWRData(click$id,"E Coli Concentration")
     }
+  }
+  
+  showModal(Modal)
+})
+
+###### ###### ###### ### ###
+###### END LEAFLET MAP #####
+###### ###### ###### ### ###
+
+
+
+###### ###### ######
+###### MODAL  #####
+###### ###### ###### 
+
+#   withProgress(message = 'Loading Station Card', {
+Modal <-  modalDialog(
+    uiOutput("StationImage"),
+    div(class='model-info-wrapper',
+         uiOutput("StationText"),
+        div(
+            selectInput("ParamSelect","", choices = "", selectize = TRUE),
+        ),
+        tabsetPanel(
+            tabPanel("Latest Measurement", plotlyOutput("GaugePlot", width = 450, height = 300)%>% withSpinner()),
+            tabPanel("Trends", textOutput("ToolTipContent"), plotOutput("TrendsPlot", hover = "plot_click", width = 550, height = 260)%>%withSpinner())
+        #     #  uiOutput("ChartKey"))
+        #     
+         ),
+        
+    ),
+    easyClose = TRUE,
+    footer = NULL
+)
+
+ 
+observeEvent(input$ParamSelect,ignoreInit = TRUE,{
+ 
+    click <- input$Map_marker_click
+    print(RenderFlag$X)
+    if(RenderFlag$X == "TRUE")
+    {
+    if(input$ParamSelect != "")
+    {
+    if(GetStationType(click$id) == 1)
+    {
+    StationDataReactive$df <- GetNOAAData(click$id,input$ParamSelect)
+    }
+    else
+    {
+    StationDataReactive$df <- GetWRData(click$id,input$ParamSelect)
+    }
+    }
+    }
+    RenderFlag$X <- "TRUE"
+})
+
+#Render Image for the station status indicator text 
+output$StationImage <- renderUI({
+    req(input$Map_marker_click)
+    click <- input$Map_marker_click 
+    
+    ImgLink <- filter(Stations, station_id == click$id)%>%
+    mutate(Image = ifelse(is.na(Image),"https://www.savethesound.org/wp-content/uploads/2021/05/orient-point-state-park_SM_HeyNardo_FINAL.jpg",Image))%>%
+    pull(Image)
 
     
+    HTML('<div class=\'model-image\' style=\'background-image: url(\" ',ImgLink,' \"); \'></div>')
 })
+
+#Text Rendering 
+output$StationText <- renderUI({
+    
+    #withProgress(message = 'Loading Station Card', {
+    click <- input$Map_marker_click
+    req(StationDataReactive$df)
+    
+    
+    char0 <- character(0)
+    #   if(sum(StationDataReactive$df)))
+    LastSampled <- StationDataReactive$df %>%
+        as.tibble()%>%
+        filter(Date < as.POSIXlt(Sys.time(), tz = "ETC"))%>%
+        select(Date, Value)%>%
+        filter(!is.na(Value))%>%
+        arrange(Date)%>%
+        slice_tail()%>%
+        pull(Date)
+    
+    LastSampled <- format(LastSampled, format="%B %d %Y")
+    
+    if(identical(char0,LastSampled))
+    {
+        LastSampled <- "No Data Currently Available. Select a New Parameter."
+    }
+    else
+    {
+        LastSampled <- paste0("Last Monitored on ", LastSampled)
+    }
+    
+    
+    StationName <- filter(Stations, station_id %in% click$id)%>%
+        pull(station_name)
+    
+    tagList(
+        tags
+        $div(id='model-info-title', style='float:left;border:0px solid red;',StationName),
+        HTML("<div id='StationStatus_wrapper' style='float:right; display:block; border:0px solid green;'>"),
+        
+     #   imageOutput("StationStatus", width= '100px', height= '30px'),
+        HTML("</div>"),
+        
+        div(style='float:left; display:block; width: 100%; border:0px solid red; margin-bottom: 15px',
+            paste(LastSampled),
+            HTML("<br/>"),
+            paste0("This site is monitored by ", 
+                   ifelse(GetStationType(click$id) == 1, "the National Oceanic and Atmospheric Administration (NOAA)", "James River Association Volunteers")),
+            HTML("<br/>"),
+           uiOutput("MoreInfo")
+        )
+        
+    )
+})
+
+
+#GetColor    #station_id param, value 
+output$MoreInfo <- renderUI({
+
+    click <- input$Map_marker_click
+    req(StationDataReactive$df)
+   
+    ## !!!! ###
+    if(!is.na(StationDataReactive$df$Value))
+    {
+   if(StationDataReactive$df$ColorHex != "#aaacab" || StationDataReactive$df$ColorHex != "#999999")
+   {
+   Text <- ifelse(GetStationType(click$id) == 1,"Thresholds were created by consulting with locals familiar with the area for an average user.","Threshold is from EPA guidance on Recreational Water Use")
+   }
+   else
+   {
+    Text <- "No Threshold Information"
+   }
+    }
+    else
+    {
+      Text <- "No Data Currently Available. Select a New Parameter."
+    }
+    tagList(
+        Text
+    )
+})
+
+output$StationStatus <- renderImage({
+    req(input$Map_marker_click)
+    click <- input$Map_marker_click
+
+    ColorHex <- StationDataReactive$df %>%
+            filter(Date < Sys.Date())%>%
+            arrange()%>%
+            slice_head()%>%
+            select(ColorHex)%>%
+            pull(ColorHex)
+        
+    Color <- GetColorName(ColorHex)
+    
+    Ratio <- IconRatio %>%
+        filter(IconColors == Color)%>%
+        pull(Ratio)
+
+    ImgLink <- paste0("www/images/Threshold", Color,".png", sep = "")
+
+    list(src=ImgLink, align = "right", width = Ratio *35, height = 35)
+
+},deleteFile = FALSE)
+
+
+###### ###### ######
+###### END MODAL  #####
+###### ###### ###### 
+
+
+###### ###### ######
+###### CHARTS  #####
+###### ###### ###### 
+
+# #Gauge Plot Rendering
+output$GaugePlot <- renderPlotly({
+  req(StationDataReactive$df)
+  click <- input$Map_marker_click
+  ChartData <- StationDataReactive$df
+  CurrentReading <- GetCurrentReading(click$id,"Value",ChartData)
+  ThresholdValue <- ChartData$ThresholdValue 
+  
+  #Getting min and Max values for the Gage plot
+  if(GetStationType(click$id) == 1)
+  {
+    Max <- NOAAStationsMaxMin %>%
+      filter(station_id == click$id) %>%
+      filter(Parameter == input$ParamSelect)%>%
+      select(Max)%>%
+      pull()
+
+    Min <- NOAAStationsMaxMin %>%
+      filter(station_id == click$id) %>%
+      filter(Parameter == input$ParamSelect)%>%
+      select(Min)%>%
+      pull()
+  }
+  else
+  {
+  #Gets the max parameter value for WR Params
+  Max <- MaxParamValue %>%
+      filter(Parameters == input$ParamSelect)%>%
+      select(MaxValue)%>%
+      pull()
+  
+  ## Changes the threshold line and current reading if the temp is switched to F
+  if(input$TempUnit == "F" && str_detect(input$ParamSelect, "Temperature"))
+  {
+    Max <- ((Max * 9/5) + 32)
+    
+
+      CurrentReading <- (CurrentReading * 9/5) + 32
+      ThresholdValue <- (ThresholdValue * 9/5) + 32
+  } 
+    Min <- 0
+  }
+  
+  t <- list(
+    family = "sofia-pro",
+    size = 14,
+    color = 'black')
+  
+  p <- plot_ly(
+    domain = list(x = c(0, 1), y = c(0, 1)),
+    value = CurrentReading,
+    title = list(text = paste(input$ParamSelect,"-",GetUnit(input$ParamSelect,input$TempUnit)), font = t),
+    type = "indicator",
+    mode = "gauge+number",
+    gauge = list(
+      axis = list(range = list(Min,Max)),
+      bar = list(color = ChartData$ColorHex),
+      threshold = list(line= list(color = "black", width = 1),
+                       thickness = 1.2,
+                       value = ThresholdValue))
+  ) %>%
+    #  config(displayModeBar = F) %>%
+    layout(margin = list(l=20,r=30,t=10,b=0)) %>%
+    layout(plot_bgcolor='transparent') %>%
+    layout(paper_bgcolor='transparent')
+  #will also accept paper_bgcolor='black' or paper_bgcolor='transparent'
+})
+
+
+#Trends Rendering 
+output$TrendsPlot <- renderPlot({
+  req(StationDataReactive$df)
+  req(input$ParamSelect)
+  click <- input$Map_marker_click
+  
+  if(!is.na(StationDataReactive$df$Value))
+     {
+  ChartData <- StationDataReactive$df %>%
+         mutate(Shape = ifelse(Date < Sys.time(), 21,23))
+  
+  CurrentReading <- GetCurrentReading(click$id,"Value",ChartData)
+  
+  # #Getting min and Max values for the Gage plot
+  if(GetStationType(click$id) == 1)
+  {
+    if(input$ParamSelect == "Stage")
+    {
+      Max <- NOAAStationsMaxMin %>%
+        filter(station_id == click$id) %>% 
+        filter(Parameter == input$ParamSelect)%>%
+        select(Max)%>%
+        pull()
+      
+      Min <- NOAAStationsMaxMin %>%
+        filter(station_id == click$id) %>% 
+        filter(Parameter == input$ParamSelect)%>%
+        select(Min)%>%
+        pull()
+    }
+    else
+    {
+      Max <- ChartData %>%
+        mutate(Max = max(Value, na.rm = FALSE))%>%
+        slice_head()%>%
+        pull(Max)
+      
+      Min <- 0
+    }
+  }
+  else
+  {
+    Max <- MaxParamValue %>%
+      filter(Parameters == input$ParamSelect)%>%
+      select(MaxValue)%>%
+      pull()
+    
+    if(input$TempUnit == "F" && str_detect(input$ParamSelect, "Temperature"))
+    {
+      Max <- ((Max * 9/5) + 32)
+      ChartData <- ChartData %>%
+                    mutate(Value = (Value * 9/5) + 32)%>%
+                    mutate(ThresholdValue = (Value * 9/5) + 32)
+    } 
+    
+    Min <- 0
+  }
+  
+  xlim <- as.POSIXct(c(min(ChartData$Date),max(ChartData$Date)),  origin = "1970-01-01")
+  
+  suppressWarnings(ggplot(data = ChartData, aes_string(x=ChartData$Date, y=ChartData$Value, stroke = .25))+
+                     geom_point(shape = ChartData$Shape, fill = ChartData$ColorHex, color = "black", size = 6)+
+                     geom_hline(yintercept= ChartData$ThresholdValue, linetype="dotted", color = "grey") +
+                     geom_vline(xintercept = Sys.time(), linetype="dashed", color = ifelse(GetStationType(click$id) == 1,"grey","white")) + 
+                     annotate("text", x = Sys.time()+5*60^2, y = Max, label = ifelse(GetStationType(click$id) == 1,"Today",""))+
+                     ylab(GetUnit(input$ParamSelect,input$TempUnit))+
+                     ylim(Min,Max)+
+                     scale_x_datetime(limits = xlim)+
+                     xlab("Date")+
+                     ggtitle(input$ParamSelect)+
+                     theme(
+                       # panel.background = element_rect(fill = "transparent"), # bg of the panel
+                       # plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+                       # panel.grid.major = element_blank(), # get rid of major grid
+                       # panel.grid.minor = element_blank(), # get rid of minor grid
+                       # legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+                       # legend.box.background = element_rect(fill = "transparent"), # get rid of legend panel bg         
+                       plot.title = element_text(hjust = 0.5, size = 22 ),
+                       panel.background =  element_rect(fill = "transparent"),
+                       plot.background = element_rect(fill = "transparent", color = NA),
+                       axis.title = element_text(size=15),
+                       axis.text = element_text(size=10),
+                       legend.position = "none"))
+  }
+})
+
+outputOptions(output, "StationText", suspendWhenHidden = TRUE)
+outputOptions(output, "StationStatus", suspendWhenHidden = TRUE)
+outputOptions(output, "GaugePlot", suspendWhenHidden = TRUE)
+#outputOptions(output, "TrendsPlot", suspendWhenHidden = TRUE)
+outputOptions(output, "StationImage", suspendWhenHidden = TRUE)
+
 
 }
 
