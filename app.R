@@ -50,12 +50,11 @@ $( document ).ready(function() {
 "
 shinyjs::useShinyjs()
 
-####### UI
+####### UI #######
 ui <- fluidPage(theme = "styler.css",
+              
                 
-              #  add_busy_spinner(spin = "fading-circle"),
-                
-                #Header
+                ### Header
                 div(id = "header",
                     div(id = "header-title",
                     ),
@@ -81,7 +80,7 @@ ui <- fluidPage(theme = "styler.css",
                 ),
                 
                 
-                # Key overlay 
+                ### Key overlay 
                 div( class= "key-overlay-container",
                      div(class = "key-overlay",
                      )
@@ -90,7 +89,7 @@ ui <- fluidPage(theme = "styler.css",
 
 
 
-# SERVER
+### SERVER SECTION ###
 server <- function(input, output,session) {
     
 
@@ -98,82 +97,94 @@ server <- function(input, output,session) {
 ###### ###### ###### ###### ###### ####
 ###### IMPORTS AND VAR DECLRATIONS ####
 ###### ###### ###### ###### ###### ####
-## For testing !!   
-#Stations <- read_csv("www/StationsTesting_v5.csv")    
 
+#### WATER REPORTER VAR DECLERATION ### 
+#List of Parameter sets
+Parameters <- c("E Coli Concentration","Enterococcus Bacteria Concentration","Air Temperature", "Water Temperature", "Turbidity") 
+EnteroParameters <- c("Enterococcus Bacteria Concentration", "Air Temperature", "Water Temperature", "Turbidity")
+ColiParameters <- c("E Coli Concentration", "Air Temperature", "Water Temperature", "Turbidity")
+  
+# Station names that should should show Enteroccocus instead of E coli by default 
+EnteroStations <- c("J05","P05","C01", "VDH-AP","VDH-HTP","VDH-KL")
+  
+# List of max values used for WR data 
+MaxValue <- c(2419,2419,45,50,500) 
+  
+##Bind of Parameters and Max Values 
+MaxParamValue <- data.frame(Parameters,MaxValue)
+  
+#Parameter Codes for API Requests
+APICode <- c(2586,2587,2583,2584,2589)
+  
+#Bind of the parameter list and the codes
+APIParameterCodes <- data.frame(Parameters,APICode)
+  
+# API Token 
+Token <- "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1Ijoic3VwcG9ydEB3YXRlcnJlcG9ydGVyLm9yZyJ9.fkSv5ZUeX0oK_PCJl5K5nPBnci7X2FJY0mSnfO3LTjSPr31hAdZUJkGnYe4hjztt-XF-RSTvn_OA8Gd14MXK1S-YJ3_zcI4SUF-HqwFPNfha39L0nHBJ2gSB3HQLxOkJ4WvF3bdtezqtLNDv4e1KeqGIPCjVBw_wL2k68Zu-Q-BJUwM9V7v5nwqFIr9Enj7Y5ggEXrPycq-XA33B61f9GXYG1MuWoo4w6zLN4N8v95Bwn2f-f1OjpCeahkRHpGKp27GCiTxkT222XuxOak4g3U1IUu_32mYNYbOl0IyGu-paj8CNpLk2e8pdu38ZpRNWS74ixdVHRzNUr18mkZttjw"
+
+
+### NOAA VAR DECLERATION + FILE IMPORT ### 
+### Hardcoded list of NOAA stations and their lat longs. 
 NOAAStationsList <- read_csv("www/NOAAStations_v1.csv")
     
-### For Testing !! ###
+### !! For turning on and off NOAA Data !! ###
 NOAAData <- read_csv("www/NOAAData_v1.csv")
 
 ### More info for NOAA Stations ###
 MoreInfo <- read_csv("www/MoreInfo_v1.csv")
 
-
-### NOAA Min Max ###
+### Values for controlling NOAA Min Max chart settings ###
 NOAAStationsMaxMin <- read_csv("www/NOAAStationsMaxMin_v1.csv")
-
-#List of Icon Colors 
-IconColors <- c("Green", "Grey", "Red", "Yellow") 
-#List of Color #'s 
-ColorHex <- c("#008000","#999999","#da222b","#ffea2e")
-ColorSet <- data.frame(IconColors,ColorHex)
-
 
 ### NOAA Stations Threshold ### 
 NOAAThresholds <- read_csv("www/NOAAThresholds_v2.csv")
 
+### Thresholds for WR Stations using NOAA Data ### 
 WRNOAAThresholds <- read_csv("www/WRNOAAThresholds_v1.csv")
 
-### Hucs GeoJson
-Hucs <- rgdal::readOGR("www/HUC8s_v2.geojson", verbose = FALSE)
-
-### River GeoJson
-River <- suppressWarnings(rgdal::readOGR("www/JamesRiverArea_v2.geojson", verbose = FALSE))
-
-
-#Noaa square iconset 
+#NOAA square iconset for use in Map 
+#Note that WR stations are circles - a default leaflet shape.
 IconSet <- iconList(
-    Red = makeIcon(iconUrl = "www/images/NOAAred.png", iconWidth = 15, iconHeight = 15),
-    Yellow = makeIcon(iconUrl = "www/images/NOAAyellow.png", iconWidth = 15, iconHeight = 15),
-    Green = makeIcon(iconUrl = "www/images/NOAAgreen.png", iconWidth = 15, iconHeight = 15),
-    Grey = makeIcon(iconUrl = "www/images/NOAAgrey.png", iconWidth = 15, iconHeight = 15)
-)
+  Red = makeIcon(iconUrl = "www/images/NOAAred.png", iconWidth = 15, iconHeight = 15),
+  Yellow = makeIcon(iconUrl = "www/images/NOAAyellow.png", iconWidth = 15, iconHeight = 15),
+  Green = makeIcon(iconUrl = "www/images/NOAAgreen.png", iconWidth = 15, iconHeight = 15),
+  Grey = makeIcon(iconUrl = "www/images/NOAAgrey.png", iconWidth = 15, iconHeight = 15))
 
-#StationDataReactive represents all the data for the selected station
+### LOGICAL COMPONENETS DECLERATION ### 
+##StationDataReactive$df is the selected data based on map marker click, and the parameter select 
 StationDataReactive <- reactiveValues(df = data.frame())
 
-RenderFlag <- reactiveValues(X = as.character("FALSE"))
+## Stores the curent list of Parameter Choices 
 ParamListReactive <- reactiveValues(X = as.vector(NULL))
 
+## Used to prevent uneeded re renders 
+RenderFlag <- reactiveValues(X = as.character("FALSE"))
+
+
+
+#### UI VAR DECLERATION ###
 #List of Icon Colors 
-IconColors <- c("Green", "Grey", "Red", "Yellow")    
+IconColors <- c("Green", "Grey", "Red", "Yellow") 
+
+#List of Color #'s 
+ColorHex <- c("#008000","#999999","#da222b","#ffea2e")
+#Bind of Colors and Color Hexs
+ColorSet <- data.frame(IconColors,ColorHex)
+
 #List of aspect ratios for threshold text 
 Ratio <- c(2.3449,4.7375,4.797,3.31)
+
 #Bind of Icon Colors and Ratio
 IconRatio <- data.frame(IconColors,Ratio)
 
-#List of Parameters 
-Parameters <- c("E Coli Concentration","Enterococcus Bacteria Concentration","Air Temperature", "Water Temperature", "Turbidity") 
-EnteroParameters <- c("Enterococcus Bacteria Concentration", "Air Temperature", "Water Temperature", "Turbidity")
-ColiParameters <- c("E Coli Concentration", "Air Temperature", "Water Temperature", "Turbidity")
+### Huc 8 GeoJson ### 
+Hucs <- rgdal::readOGR("www/HUC8s_v2.geojson", verbose = FALSE)
 
-#Station names that should sho
-EnteroStations <- c("J05","P05","C01", "VDH-AP","VDH-HTP","VDH-KL")
+### River GeoJson ###
+River <- suppressWarnings(rgdal::readOGR("www/JamesRiverArea_v2.geojson", verbose = FALSE))
 
-##!!List of max values used for WR data - will likely drop
-MaxValue <- c(2419,2419,45,50,500) 
-##Bind of Parameters and Max Values 
-MaxParamValue <- data.frame(Parameters,MaxValue)
-
-#Parameter Codes for API Request 
-APICode <- c(2586,2587,2583,2584,2589)
-APIParameterCodes <- data.frame(Parameters,APICode)
-
-# API Token 
-Token <- "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1Ijoic3VwcG9ydEB3YXRlcnJlcG9ydGVyLm9yZyJ9.fkSv5ZUeX0oK_PCJl5K5nPBnci7X2FJY0mSnfO3LTjSPr31hAdZUJkGnYe4hjztt-XF-RSTvn_OA8Gd14MXK1S-YJ3_zcI4SUF-HqwFPNfha39L0nHBJ2gSB3HQLxOkJ4WvF3bdtezqtLNDv4e1KeqGIPCjVBw_wL2k68Zu-Q-BJUwM9V7v5nwqFIr9Enj7Y5ggEXrPycq-XA33B61f9GXYG1MuWoo4w6zLN4N8v95Bwn2f-f1OjpCeahkRHpGKp27GCiTxkT222XuxOak4g3U1IUu_32mYNYbOl0IyGu-paj8CNpLk2e8pdu38ZpRNWS74ixdVHRzNUr18mkZttjw"
-
-
+### Image used when no station image is available 
+DefaultImage <- "https://www.savethesound.org/wp-content/uploads/2021/05/orient-point-state-park_SM_HeyNardo_FINAL.jpg"
 
 ###### ###### ###### ###### ###### ####
 ### END IMPORTS AND VAR DECLARTIONS ###
@@ -185,21 +196,23 @@ Token <- "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1Ijoic3VwcG9ydEB3YXRlcnJlcG9yd
 ###### API FUNCTIONS ####
 ###### ###### ######  ###
 
-## Returns the station_id, station_name, station_API_id, station_key, Latitude, Longitude and Type
+## GetWRStations
+## Returns a data frame containing station_id, station_name, station_API_id, station_key, Latitude, Longitude and Type
+## Used in GetAllStations
 GetWRStations <- function()
-{
+{   
+    ## Gets the Water Reporter Station List for Swimming Conditions 2021, id 1227.
+    Request <- GET(paste("https://api.waterreporter.org/stations?sets=1227&geo_format=xy&access_token=",Token, sep = ""))
     
-    Request <- GET(paste("https://api.waterreporter.org/stations?sets=1227&geo_format=xy&access_token=",Token, sep = "")
-    )
-
+    ##Converting to dataframe 
     jsonRequestText <- content(Request,as="text")
     parsed <- fromJSON(jsonRequestText)
     Data <- data.frame(parsed$features)
     
-    
+    ## Selecting only the columns we need
     StationData <- data.frame(Data$raw_id,Data$name,Data$id,Data$lat,Data$lng,Data$description,Data$image_url) 
     
-    #Cleaning Var Names 
+    #C#leaning Var Names 
     colnames(StationData) <- gsub('Data.','',colnames(StationData))
     
     StationData <- StationData %>%
@@ -211,67 +224,94 @@ GetWRStations <- function()
                       "Image" = image_url)%>%
                        mutate(Type = 0)
     
-    ### We need to get the colors which is a seperate per station and parameter request ###
+    ### We need to get the colors for each station now which is a seperate per station and parameter request ###
+    
+    ### Wrapping this in a withProgress on startup because it takes a bit for each request
     withProgress(message = 'Fetching Water Reporter Data: ', value = nrow(StationData), {
+      
     for (row in 1:nrow(StationData))
-    {
-      incProgress(1/row, detail = HTML(paste(StationData$station_name[row], " | ", row, " of ", nrow(StationData), sep = "")))
+    {   
+        # The Parameter ID is either for Enterococcus or Ecoli, depending on the station name hardcoded here.
         Parameter_ID <- ifelse(StationData$station_id[row] %in% EnteroStations,2587,2586)
         
+        # Making the request 
         URL <- paste("https://api.waterreporter.org/readings?station_id=",StationData$station_API_id[row],"&parameter_id=",Parameter_ID,"&limit=1&access_token=",Token, sep = "")
         
+        #Getting it
         Request <- GET(URL)
-
+        
+        #Parsing
         jsonRequestText <- content(Request,as="text")
         parsed <- fromJSON(jsonRequestText)
-
+        
+        #If the color is null, set to grey
         StationData$ColorHex[row] <- as.character(ifelse(!is.null(parsed$data$color),parsed$data$color,"#999999"))
-
+        
+        #Post progress
+        incProgress(1/row, detail = HTML(paste(StationData$station_name[row], " | ", row, " of ", nrow(StationData), sep = "")))
     }
-    })
-    return(StationData)
+ })
+   
+return(StationData)
 }
 
-## Station Data Request 
-## Returns collection date, parametervalue, and color 
-GetWRData <- function(Station_ID,ParameterName)
+## GetWRData
+## Takes StationID or ParameterName
+## Returns Date, Value, ColorHex, ThresholdValue
+## Used in  observeEvent(input$Map_marker_click
+GetWRData <- function(StationID,ParameterName)
 {
-    ## $$ Parsing Parameter Name 
+    ## Parsing Parameter Name 
     ParameterCode <- APIParameterCodes %>%
         filter(Parameters == ParameterName)%>%
         pull(APICode)
     
-    ## $$ Parsing the Station Name 
+    ## Parsing the Station Name 
     #Getting the station_API_id for calling the WRData
     station_API_id <- Stations %>%
-        filter(station_id == Station_ID)%>%
+        filter(station_id == StationID)%>%
         pull(station_API_id)
     
+    ## Assembling Request
     URL <- paste("https://api.waterreporter.org/readings?parameter_id=",ParameterCode,"&station_id=",station_API_id,"&access_token=",Token, sep = "")
     
+    ## Request
     Request <- GET(URL)
-
+ 
+    ## Parsing
     jsonRequestText <- content(Request,as="text")
     parsed <- fromJSON(jsonRequestText)
     
+    ## Assembling data
     if(!is.null(parsed$dataset))
     {
+    ## Main Components from API Response
     Data <- data.frame(parsed$data$collection_date,parsed$data$value,parsed$data$color)%>%
                 rename("Date" = parsed.data.collection_date,
                        "Value" = parsed.data.value,
-                      "ColorHex" = parsed.data.color)%>%
-                      mutate(ColorHex = as.character(ColorHex))%>%
-                      mutate(ColorHex = as.character(ifelse(ColorHex == "#616161" | is.null(ColorHex), "#999999",ColorHex)))%>%
-                      mutate(Date = as.POSIXct(Date, origin = "1970-01-01", tz = "UTC"))
+                       "ColorHex" = parsed.data.color)%>%
+                mutate(ColorHex = as.character(ColorHex))%>%
+                ## Sometimes WR sends a #616161 or a null color, convert to grey here
+                mutate(ColorHex = as.character(ifelse(ColorHex == "#616161" | is.null(ColorHex), "#999999",ColorHex)))%>%
+                mutate(Date = as.POSIXct(Date, origin = "1970-01-01", tz = "UTC"))
     
-    ### Getting the correct thresholds and the threshold value for charts
+    ### Calculating ThresholdValue 
+    ### Used in the Gauge Plot and Trends plot.
+    # Need the current reading
     CurrentReading <- Data %>%
                       slice_head()%>%
                       pull(Value)
 
+    ### Getting the threshold logic from WR
     UpperBound <- parsed$parameter$chart_schema$ranges$upper_bound
+    
+    #turning into a list
     ThresholdValueList <- UpperBound[!is.na(UpperBound)]
+    
+    #selecting only ones which are above the current reading
     ThresholdValueListTrimmed <- list.filter(ThresholdValueList, . >= CurrentReading)
+    
+    #Geting the min absulute value threshold line
     ThresholdValue <- as.numeric(ThresholdValueListTrimmed[which.min(abs(CurrentReading-ThresholdValueListTrimmed))])
 
     # Checking to see if value is over threshold, setting to max threshold value
@@ -279,11 +319,16 @@ GetWRData <- function(Station_ID,ParameterName)
     {
     ThresholdValue <- max(ThresholdValueList)
     }
-
+    
+    # Entering into the Data frame
     Data$ThresholdValue <- ThresholdValue
-    Data$station_id <- Station_ID
+    
+    # Lastly adding the station id
+    Data$station_id <- StationID
     
     }
+    
+    ##### If the request for data comes back empty, we handle it here ###
     else
     {
     Data <- data.frame(matrix(ncol = 5, nrow = 1))
@@ -293,13 +338,13 @@ GetWRData <- function(Station_ID,ParameterName)
     Data$ColorHex <- "#999999"
     Data$Date <- Sys.time()
     }
-    print(Data)
     return(Data)
 }
 
-
-## NOAA DATA PARSER ##
-#Data Parcing for the NOAA sensor data from NOAA
+## NOAA Data Request
+## Takes NOAA StationID 
+## Returns Date, Stage, Flow 
+## Used in NOAADataPull
 NOAADataRequest <- function(StationID)
 { 
     #Getting Sys.Date Year to append to data 
@@ -316,21 +361,23 @@ NOAADataRequest <- function(StationID)
     
     #Getting Correct List
     dfRaw <- data.frame(dfRawHtml[1])
+    
     #Cleaning Data
     dfCleaned <- dfRaw %>%
-        #     #Renaming Vars
         rename("Date" = NULL.V1,
                "Stage" = NULL.V2,
                "Flow" =  NULL.V3)%>%
-        #     #Filtering out unneeded rows leftover from parsing
+        ##Filtering out unneeded rows leftover from parsing
         filter(!grepl('Forecast',Date))%>%
         filter(!grepl('Observed',Date))%>%
         filter(!grepl('Date',Date))%>%
-        #Adding Year to Date
         mutate(Date = as.POSIXct(paste(Year,"/",as.character(Date), sep = ""), tz="UTC"))%>%
         mutate(Stage = as.numeric(str_remove(Stage, "ft")))%>%
+        #Detecting the unit and converting kcfs to cfs
         mutate(Flow = ifelse(str_detect(Flow, "kcfs"), as.numeric(str_remove(Flow, "kcfs"))*1000, as.numeric(str_remove(Flow, "cfs"))))%>%
+        #Handling no data value
         mutate(Flow = ifelse(Flow < -900, NA, Flow))%>%
+        mutate(Stage = ifelse(Stage < -900, NA, Stage))%>%
         mutate(station_id = StationID)
     
     return(dfCleaned)
@@ -338,21 +385,26 @@ NOAADataRequest <- function(StationID)
 ## END NOAA DATA PARSER ##
 
 
-#Constructs the NOAA Data Frame and shows loading progress
-#!!!! Uncomment to run loading, comment out to skip loading ####
+### NOAADataPull
+# Constructs the NOAA Data Frame from the NOAAStationsList using the NOAADataRequest function
+# !!!! Uncomment line below to run loading, comment out to skip loading for testing ####
 NOAADataPull <- function()
 {
+    ## Assembling blank dataframe 
     NOAAData <- data.frame(station_id = character(),
                            Date = as.character(),
                            Flow = double(),
                            Stage = double())
     
+       #We have a with progress here because it takes awhile 
        withProgress(message = 'Fetching Predictive NOAA Data: ', value = nrow(NOAAStationsList), {
         
+         ## Loops 
         for (row in 1:nrow(NOAAStationsList))
         {
                 incProgress(1/row, detail = HTML(paste(NOAAStationsList$station_name[row], " | ", row, " of ", 14, sep = "")))
-                
+                 
+                # Runs the request, and binds it to the data 
                 NOAAData <- rbind(NOAAData,NOAADataRequest(NOAAStationsList$station_id[row]))
         }
         return(NOAAData)
@@ -360,18 +412,24 @@ NOAADataPull <- function()
 }
 #NOAAData <- NOAADataPull()
 #write.csv(NOAAData,"www/NOAAData_v1.csv")
-GetNOAAData <- function(Station_ID,ParameterName)
+
+
+### Get NOAA Data 
+### Takes StationID, ParameterName
+### Returns Date, Value, ColorHex, ThresholdValue
+### Used in  observeEvent(input$Map_marker_click
+GetNOAAData <- function(StationID,ParameterName)
 {
-  if(Station_ID %in% WRNOAAThresholds$WRstation_id)
+  if(StationID %in% WRNOAAThresholds$WRstation_id)
   {
    NOAAStation_ID <- WRNOAAThresholds %>%
-                filter(WRstation_id == Station_ID)%>%
+                filter(WRstation_id == StationID)%>%
                 slice_head()%>%
                 pull(NOAAstation_id)
   }
   else
   {
-  NOAAStation_ID <- Station_ID  
+  NOAAStation_ID <- StationID  
   }
   
 
@@ -381,14 +439,15 @@ GetNOAAData <- function(Station_ID,ParameterName)
                     rename("Value" = ParameterName)%>%
                     mutate(ColorHex = "")
     
+  ## Getting the correct ColorHex
   for (row in 1:nrow(NOAAStationData))
   {
-  NOAAStationData$ColorHex[row] <- GetColorHex(GetColor(Station_ID,ParameterName,NOAAStationData$Value[row]))
+  NOAAStationData$ColorHex[row] <- GetColorHex(GetColor(StationID,ParameterName,NOAAStationData$Value[row]))
   }
 
  CurrentReading <- GetCurrentReading(NOAAStation_ID,ParameterName,NOAAData)
 
- Threshold <- GetThreshold(Station_ID, ParameterName)
+ Threshold <- GetThreshold(StationID, ParameterName)
  
 #Threshold is set to the threshold value closets to the current value because we can't show all of them due to Plotly limitations
 if(nrow(Threshold) != 0 && !is.na(Threshold$ValueOne))
@@ -414,17 +473,45 @@ else
 
   return(NOAAStationData)
 }
-
 ###### ###### ######  ###
 ###### END API FUNCTIONS #
 ###### ###### ######  ###
+
 
 
 ###### ###### ######  ###
 ###### HELPER FUNCTIONS #
 ###### ###### ######  ###
 
-#Get Station Type 
+## Get All Stations 
+## Gets the correct Colors, and Current Readings for NOAA Stations and WR Stations for use in the map and Gauge plot. 
+## Declared above leaflet Map as Stations
+GetAllStations <- function()
+{ 
+  
+  NOAAStations <- NOAAStationsList %>%
+    mutate(description = "")%>%
+    mutate(ColorHex = "")%>%
+    mutate(station_API_id = "")%>%
+    mutate(CurrentReading = 0)
+  
+  #We need to use a helper function, Current Reading to get the colors for the NOAA Data. 
+  for (row in 1:nrow(NOAAStations))
+  {
+    NOAAStations$CurrentReading[row] <- GetCurrentReading(NOAAStations$station_id[row],"Stage",NOAAData)
+    NOAAStations$ColorHex[row] <- as.character(GetColor(NOAAStations$station_id[row],"Stage",NOAAStations$CurrentReading[row]))
+  }
+  
+  NOAAStations <- NOAAStations %>%
+    select(-c(CurrentReading))
+  
+  Stations <- rbind(NOAAStations,GetWRStations())
+  return(Stations)
+}
+
+# Get Station Type 
+# Takes Station_ID 
+# Returns Station Type (1 for NOAA station and 0 for WR station)
 GetStationType <- function(Station_ID)
 {
     
@@ -434,17 +521,20 @@ GetStationType <- function(Station_ID)
         pull()
 }
 
-
-GetThreshold <- function(Station_ID, Parameter)
+# Get Threshold 
+# Takes Station_ID, ParameterName
+# Returns the correct row with threshold instructions
+GetThreshold <- function(Station_ID, ParameterName)
 {
+  
   if(Station_ID %in% WRNOAAThresholds$WRstation_id)
   {
     Threshold <- WRNOAAThresholds[0,]
     
-    if(Parameter %in% WRNOAAThresholds$Parameter)
+    if(ParameterName %in% WRNOAAThresholds$Parameter)
     {
       Threshold <- WRNOAAThresholds %>%
-                  filter(Parameter == Parameter)%>%
+                  filter(Parameter == ParameterName)%>%
                   filter(WRstation_id == Station_ID)
     }
   }
@@ -454,10 +544,10 @@ GetThreshold <- function(Station_ID, Parameter)
     
         if(Station_ID %in% NOAAThresholds$station_id)
         {
-            if(Parameter %in% NOAAThresholds$Parameter)
+            if(ParameterName %in% NOAAThresholds$Parameter)
             {
                 Threshold <- NOAAThresholds %>%
-                    filter(Parameter == Parameter)%>%
+                    filter(Parameter == ParameterName)%>%
                     filter(station_id == Station_ID) 
             }
         }
@@ -466,18 +556,23 @@ GetThreshold <- function(Station_ID, Parameter)
     return(Threshold)
 }
 
-# #Gets the color of the station 
-# Lets re write this at somepoint, its very shitty 
+## Get Color 
+## Takes Station_ID, Parameter, Value 
+## Returns the color name 
 GetColor <- function(Station_ID,Parameter,Value)
 {
  
         Color <- "Grey"
         
+        ## Checks to see if the station is in the the WRNOAA Data 
         if(Station_ID %in% WRNOAAThresholds$WRstation_id)
         {
+          ## Checks to see if Parameter is as well 
           if(Parameter %in% WRNOAAThresholds$Parameter)
           {
+           ## Gets the Threshold
            Threshold <- GetThreshold(Station_ID,Parameter)
+           
            if(!is.na(Threshold$ValueOne))
            {
            Color <- ifelse(Value <= Threshold$ValueOne,"Green",Color)
@@ -512,6 +607,11 @@ GetColor <- function(Station_ID,Parameter,Value)
         return(Color)
 }
 
+
+
+
+#Gets the Color Hex 
+#Takes a color name 
 GetColorHex <- function(Color)
 {
     Hex <- ColorSet %>%
@@ -523,6 +623,8 @@ GetColorHex <- function(Color)
     return(Hex)
 }
 
+#Gets the color name
+#Takes ColorHex
 GetColorName <- function(inColorHex)
 {
     ColorName <- ColorSet %>%
@@ -584,59 +686,30 @@ GetUnit <- function(inParameter,inUnit)
 ###### ###### ###### ### 
 
 
-#Gets the correct Colors, and Current Readings for NOAA Stations and WR Stations for use in the map and Gauge plot. 
-GetAllStations <- function()
-{
-    NOAAStations <- NOAAStationsList %>%
-        mutate(description = "")%>%
-        mutate(ColorHex = "")%>%
-        mutate(station_API_id = "")%>%
-        mutate(CurrentReading = 0)
-
-    #We need to use a helper function, Current Reading to get the colors for the NOAA Data. 
-    for (row in 1:nrow(NOAAStations))
-    {
-        NOAAStations$CurrentReading[row] <- GetCurrentReading(NOAAStations$station_id[row],"Stage",NOAAData)
-        NOAAStations$ColorHex[row] <- as.character(GetColor(NOAAStations$station_id[row],"Stage",NOAAStations$CurrentReading[row]))
-        
-    }
-    
-    NOAAStations <- NOAAStations %>%
-                   select(-c(CurrentReading))
-
-    Stations <- rbind(NOAAStations,GetWRStations())
-    return(Stations)
-}
-
 ### Renders the Leaflet Map
 Stations <- GetAllStations()
 output$Map <- renderLeaflet({
+
+    WRStations <- Stations %>%
+                  filter(Type == 0)
     
-     WRStations <- Stations %>%
-                 filter(Type == 0)
-    
-    NOAAData <- Stations %>%
-        filter(Type == 1)  %>%
-        mutate(Color = as.character(ColorHex))
+    NOAAStations <-  Stations %>%
+                 filter(Type == 1)  %>%
+                 mutate(Color = as.character(ColorHex))
     
     leaflet("Map")%>%
         addProviderTiles("CartoDB.VoyagerLabelsUnder", group = "Streets")%>%
         addPolygons(data = Hucs, color = "#76cdae", weight = 3, label = "James River Watershed")%>%
         addPolygons(data = River, color = "#104a77", opacity = 1, stroke = TRUE, weight = 1, label = "James River and Tributaries")%>%
         addCircleMarkers(data = WRStations, lng = ~Longitude, lat = ~Latitude, layerId = ~ station_id, label = ~station_name, fillColor = ~ColorHex, color = "black", fillOpacity = 1, weight = 1)%>%
-        addMarkers(data = NOAAData, lng = ~Longitude, lat = ~Latitude, layerId = ~ station_id, label = ~station_name, icon = ~IconSet[ColorHex])
+        addMarkers(data = NOAAStations, lng = ~Longitude, lat = ~Latitude, layerId = ~ station_id, label = ~station_name, icon = ~IconSet[ColorHex])
 })
-
-
-
-
 
 ## Reacts to Map Marker Click to make data for the modal
 observeEvent(input$Map_marker_click, ignoreNULL = TRUE,{
-  #RenderFlag$X <- "FALSE"
-
   click <- input$Map_marker_click
   
+  ## If its a NOAA Station, set the correct parameter list and get the noaa data
   if(GetStationType(click$id) == 1)
   {
     ParamListReactive$X <- c("Stage","Flow")
@@ -644,35 +717,44 @@ observeEvent(input$Map_marker_click, ignoreNULL = TRUE,{
   }
   else
   {
-    # If the station should show enterococuss by default, this will be the OG modal data, otherwise, E Coli
-    if(click$id %in% EnteroStations)
-    {
-      if(click$id %in% WRNOAAThresholds$WRstation_id)
-      {
-        ParamListReactive$X <- c(EnteroParameters,"Stage","Flow")
-      }
-      else
-      {
-        ParamListReactive$X <- EnteroParameters
-      }
-      StationDataReactive$df <- GetWRData(click$id,"Enterococcus Bacteria Concentration")
-    }
-    else
-    {
-      if(click$id %in% WRNOAAThresholds$WRstation_id)
-         {
-           ParamListReactive$X <- c(ColiParameters,"Stage","Flow")
-         }
-         else
-         {
+     # If the station should show enterococuss by default, this will be the OG modal data, otherwise, E Coli
+      if(click$id %in% EnteroStations)
+       {
+        # If the station needs stage or flow data, add those options here 
+        if(click$id %in% WRNOAAThresholds$WRstation_id)
+          {
+          ParamListReactive$X <- c(EnteroParameters,"Stage","Flow")
+          }
+          else
+          {
+          ParamListReactive$X <- EnteroParameters
+          }
+      
+           #Fetch Data 
+          StationDataReactive$df <- GetWRData(click$id,"Enterococcus Bacteria Concentration")
+        }
+        # If the station needs stage or flow data, add those options here 
+        else
+        {
+         if(click$id %in% WRNOAAThresholds$WRstation_id)
+          {
+          ParamListReactive$X <- c(ColiParameters,"Stage","Flow")
+          }
+          else
+          {
            ParamListReactive$X <- ColiParameters
-         }
+          }
      
-      StationDataReactive$df <- GetWRData(click$id,"E Coli Concentration")
-    }
+           ## Fetch Data
+          StationDataReactive$df <- GetWRData(click$id,"E Coli Concentration")
+        }
     
   }
+  
+  ## Render the Modal
   showModal(Modal)
+  
+  ## Set Render Flag to false so we don't trigger the ParamSelect observe event 
   RenderFlag$X <- "FALSE"
 })
 
@@ -686,26 +768,22 @@ observeEvent(input$Map_marker_click, ignoreNULL = TRUE,{
 ###### MODAL  #####
 ###### ###### ###### 
 
-#   withProgress(message = 'Loading Station Card', {
+### Modal Decleration 
 Modal <-  modalDialog(
     uiOutput("StationImage"),
     div(class='model-info-wrapper',
          uiOutput("StationText"),
-        div(
-          uiOutput("ParameterSelect")
-        ),
+         div(uiOutput("ParameterSelect")),
         tabsetPanel(
             tabPanel("Latest Measurement",uiOutput("GaugeTitle"),plotlyOutput("GaugePlot", width = 450, height = 250)%>% withSpinner()),
             tabPanel("Trends",uiOutput("TrendsTitle"),plotOutput("TrendsPlot", hover = "plot_click", width = 550, height = 250)%>% withSpinner())
-        #     #  uiOutput("ChartKey"))
-         ),
-        
+                   ),
     ),
     easyClose = TRUE,
     footer = NULL,
 )
 
-
+## Render UI for Parameter Select
 output$ParameterSelect <- renderUI({
   selectInput("ParamSelect","", choices = ParamListReactive$X)
 })
@@ -742,28 +820,27 @@ observeEvent(input$ParamSelect,ignoreNULL = TRUE,ignoreInit = TRUE,{
 output$StationImage <- renderUI({
     req(input$Map_marker_click)
     click <- input$Map_marker_click 
-    
     ImgLink <- filter(Stations, station_id == click$id)%>%
-    mutate(Image = ifelse(is.na(Image),"https://www.savethesound.org/wp-content/uploads/2021/05/orient-point-state-park_SM_HeyNardo_FINAL.jpg",Image))%>%
+    mutate(Image = ifelse(is.na(Image),DefaultImage,Image))%>%
     pull(Image)
     
     HTML('<div class=\'model-image\' style=\'background-image: url(\" ',ImgLink,' \"); \'></div>')
 })
 
-#Text Rendering 
+#Station Text Rendering
 output$StationText <- renderUI({
     click <- input$Map_marker_click
     req(StationDataReactive$df)
-    
     char0 <- character(0)
+    
     LastSampled <- StationDataReactive$df %>%
-        as.tibble()%>%
-        filter(Date < as.POSIXlt(Sys.time(), tz = "ETC"))%>%
-        select(Date, Value)%>%
-        filter(!is.na(Value))%>%
-        arrange(Date)%>%
-        slice_tail()%>%
-        pull(Date)
+                   as.tibble()%>%
+                   filter(Date < as.POSIXlt(Sys.time(), tz = "ETC"))%>%
+                   select(Date, Value)%>%
+                   filter(!is.na(Value))%>%
+                   arrange(Date)%>%
+                   slice_tail()%>%
+                   pull(Date)
     
     LastSampled <- format(LastSampled, format="%B %d %Y")
     
@@ -788,8 +865,6 @@ output$StationText <- renderUI({
     NOAAStationName <- filter(Stations, station_id %in% NOAAStation_ID)%>%
       pull(station_name)
     
-    print(NOAAStationName)
-    
     tagList(
         tags
         $div(id='model-info-title', style='float:left;border:0px solid red;',StationName),
@@ -811,19 +886,17 @@ output$StationText <- renderUI({
     )
 })
 
-
-#GetColor    #station_id param, value 
+#MoreInfo
+# Used Above in Station Text
 output$MoreInfo <- renderUI({
-
     click <- input$Map_marker_click
     req(StationDataReactive$df)
    
-    ## !!!! ###
     if(!is.na(StationDataReactive$df$Value))
     {
-   if(StationDataReactive$df$ColorHex[1] != "#999999")
-   {
-   Text <- ifelse(GetStationType(StationDataReactive$df$station_id[1]) == 1,"Thresholds were created by consulting with locals familiar with the area for an average user.","Threshold is from EPA guidance on Recreational Water Use.")
+    if(StationDataReactive$df$ColorHex[1] != "#999999")
+    {
+   Text <- ifelse(GetStationType(StationDataReactive$df$station_id[1]) == 1,"Thresholds were created by locals familiar with the area for a typical user.","Threshold is from EPA guidance on Recreational Water Use.")
    }
    else
    {
@@ -839,6 +912,7 @@ output$MoreInfo <- renderUI({
     )
 })
 
+## Station Status Image
 output$StationStatus <- renderImage({
     req(input$Map_marker_click)
     click <- input$Map_marker_click
@@ -875,7 +949,7 @@ output$StationStatus <- renderImage({
 ###### ###### ###### 
 
 
-## Gauge Title 
+## Gauge Chart Title 
 output$GaugeTitle <- renderUI({
   req(input$ParamSelect)
   text <- paste(input$ParamSelect,"-",GetUnit(input$ParamSelect,input$TempUnit))
@@ -884,13 +958,12 @@ output$GaugeTitle <- renderUI({
   )
 })
 
-# #Gauge Plot Rendering
+## Gauge Plot Rendering
 output$GaugePlot <- renderPlotly({
   req(StationDataReactive$df)
   req(input$ParamSelect)
   click <- input$Map_marker_click
   ChartData <- StationDataReactive$df
-  
   CurrentReading <- GetCurrentReading(ChartData$station_id[1],"Value",ChartData)
   ThresholdValue <- ChartData$ThresholdValue 
   
@@ -929,6 +1002,7 @@ output$GaugePlot <- renderPlotly({
     Min <- 0
   }
   
+  ## Declaring font for the plot
   t <- list(
     family = "sofia-pro",
     size = 14,
@@ -937,7 +1011,6 @@ output$GaugePlot <- renderPlotly({
   p <- plot_ly(
     domain = list(x = c(0, 1), y = c(0, 1)),
     value = CurrentReading,
-   # title = list(text = paste(input$ParamSelect,"-",GetUnit(input$ParamSelect,input$TempUnit)), font = t),
     type = "indicator",
     mode = "gauge+number",
     gauge = list(
@@ -947,7 +1020,7 @@ output$GaugePlot <- renderPlotly({
                        thickness = 1.2,
                        value = ThresholdValue))
   ) %>%
-    #  config(displayModeBar = F) %>%
+      config(displayModeBar = F) %>%
     layout(margin = list(l=20,r=30,t=10,b=0)) %>%
     layout(plot_bgcolor='transparent') %>%
     layout(paper_bgcolor='transparent')
