@@ -1,10 +1,22 @@
-#JRA Widget 
+# JRA Widget 2.0
 # Git https://github.com/ChesapeakeCommons/JRAWidget_v2.0.git
 # Readme https://docs.google.com/document/d/1dHaQ7w8Ttfirp27Yuaoji84n7KgoQs-Qo83T9WIb8-Q/edit
 # Created 05.19.2021
-
-
-
+## Program Structure 
+## UI Side 
+## Server Side 
+##   Var Decleration 
+##   API Request Functions 
+##   Helper Functions 
+##   Map 
+##   Modal 
+##   Rendered Components 
+##       Parameter Select
+##       Station Image 
+##       Station Station Status 
+##       Station Text
+##       Gage Chart 
+##       Trends Chart 
 
 library(shiny)
 library(shinyjs)
@@ -410,7 +422,7 @@ NOAADataPull <- function()
         return(NOAAData)
     })
 }
-#NOAAData <- NOAADataPull()
+NOAAData <- NOAADataPull()
 #write.csv(NOAAData,"www/NOAAData_v1.csv")
 
 
@@ -1020,18 +1032,17 @@ output$GaugePlot <- renderPlotly({
                        thickness = 1.2,
                        value = ThresholdValue))
   ) %>%
-      config(displayModeBar = F) %>%
+    #config(displayModeBar = F) %>%
     layout(margin = list(l=20,r=30,t=10,b=0)) %>%
     layout(plot_bgcolor='transparent') %>%
     layout(paper_bgcolor='transparent')
-  #will also accept paper_bgcolor='black' or paper_bgcolor='transparent'
 })
 
 
 
 
 
-## Chart Title 
+## Trends Chart Title 
 output$TrendsTitle <- renderUI({
   req(input$ParamSelect)
   text <- paste(input$ParamSelect,"-",GetUnit(input$ParamSelect,input$TempUnit))
@@ -1040,19 +1051,20 @@ output$TrendsTitle <- renderUI({
   )
 })
 
-#Trends Rendering 
+#Trends Chart Rendering 
 output$TrendsPlot <- renderPlot({
   req(StationDataReactive$df)
   req(input$ParamSelect)
   click <- input$Map_marker_click
   
-  if(!is.na(StationDataReactive$df$Value[1]))
-     {
-        ChartData <- StationDataReactive$df %>%
-         mutate(Shape = ifelse(Date < Sys.time(), 21,23))
-  
+if(!is.na(StationDataReactive$df$Value[1]))
+  {
+  ChartData <- StationDataReactive$df %>%
+  mutate(Shape = ifelse(Date < Sys.time(), 21,23))
   CurrentReading <- GetCurrentReading(ChartData$station_id[1],"Value",ChartData)
-  # #Getting min and Max values for the Gage plot
+  
+  # #Getting min and Max values for the Gage plot.
+  # Dependent on Station type and parameter 
   if(GetStationType(ChartData$station_id[1]) == 1)
   {
     if(input$ParamSelect == "Stage")
@@ -1069,22 +1081,23 @@ output$TrendsPlot <- renderPlot({
         select(Min)%>%
         pull()
     }
+    
+    #If Flow 
     else
     {
-      Max <- ChartData %>%
-        mutate(Max = max(Value, na.rm = FALSE))%>%
-        slice_head()%>%
-        pull(Max)
-      
       Max <- max(ChartData$Value)
       
       Min <- 0
     }
+    
+    ## Getting the correct ColorHex
     for (row in 1:nrow(ChartData))
     {
     ChartData$ColorHex[row] <- GetColorHex(GetColor(click$id,input$ParamSelect,ChartData$Value[row]))
     }
+    
   }
+  
   else
   {
     Max <- MaxParamValue %>%
@@ -1102,6 +1115,8 @@ output$TrendsPlot <- renderPlot({
     Min <- 0
     }
   
+  
+  # Checks to see if the start and end date are the same and then addes some padding so the chart looks normal 
   if(identical(min(ChartData$Date),max(ChartData$Date)))
      {
    xlim <- as.POSIXct(c(min(ChartData$Date - 60*60*48 ),max(ChartData$Date + 60*60*48 )),  origin = "1970-01-01")
@@ -1110,9 +1125,6 @@ output$TrendsPlot <- renderPlot({
    {
    xlim <- as.POSIXct(c(min(ChartData$Date),max(ChartData$Date)),  origin = "1970-01-01")
    }
-
-
-  
   
   suppressWarnings(ggplot(data = ChartData, aes_string(x=ChartData$Date, y=ChartData$Value, stroke = .25))+
                      geom_point(shape = ChartData$Shape, fill = ChartData$ColorHex, color = "black", size = 6)+
@@ -1123,7 +1135,6 @@ output$TrendsPlot <- renderPlot({
                      ylim(Min,Max)+
                      scale_x_datetime(limits = xlim)+
                      xlab("")+
-                     #ggtitle(input$ParamSelect)+
                      theme(
                        plot.title = element_text(hjust = 0.5, size = 22 ),
                        panel.background =  element_rect(fill = "transparent"),
