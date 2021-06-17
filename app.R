@@ -117,10 +117,10 @@ EnteroParameters <- c("Enterococcus Bacteria Concentration", "Air Temperature", 
 ColiParameters <- c("E Coli Concentration", "Air Temperature", "Water Temperature", "Turbidity")
   
 # Station names that should should show Enteroccocus instead of E coli by default 
-EnteroStations <- c("J05","P05","C01", "VDH-AP","VDH-HTP","VDH-KL")
+EnteroStations <- c("J05","P05","C01","CC01","CC02","VDH-AP","VDH-HTP","VDH-KL", "VDH-HB")
   
 # List of max values used for WR data 
-MaxValue <- c(2419,2419,45,50,500) 
+MaxValue <- c(2419,2419,45,50,250) 
   
 ##Bind of Parameters and Max Values 
 MaxParamValue <- data.frame(Parameters,MaxValue)
@@ -289,11 +289,11 @@ GetWRData <- function(StationID,ParameterName)
     
     ## Request
     Request <- GET(URL)
- 
+    print(Request)
     ## Parsing
     jsonRequestText <- content(Request,as="text")
     parsed <- fromJSON(jsonRequestText)
-    
+    print(parsed)
     ## Assembling data
     if(!is.null(parsed$dataset))
     {
@@ -319,6 +319,7 @@ GetWRData <- function(StationID,ParameterName)
     
     #turning into a list
     ThresholdValueList <- UpperBound[!is.na(UpperBound)]
+    print(ThresholdValueList)
     
     #selecting only ones which are above the current reading
     ThresholdValueListTrimmed <- list.filter(ThresholdValueList, . >= CurrentReading)
@@ -331,7 +332,7 @@ GetWRData <- function(StationID,ParameterName)
     {
     ThresholdValue <- max(ThresholdValueList)
     }
-    
+    print(ThresholdValue)
     # Entering into the Data frame
     Data$ThresholdValue <- ThresholdValue
     
@@ -346,7 +347,7 @@ GetWRData <- function(StationID,ParameterName)
     Data <- data.frame(matrix(ncol = 5, nrow = 1))
     headers <- c("station_id", "Date", "Value","ColorHex","ThresholdValue")
     colnames(Data) <- headers
-    Data$station_id <- Station_ID
+    Data$station_id <- StationID
     Data$ColorHex <- "#999999"
     Data$Date <- Sys.time()
     }
@@ -385,8 +386,8 @@ NOAADataRequest <- function(StationID)
         filter(!grepl('Date',Date))%>%
         mutate(Date = as.POSIXct(paste(Year,"/",as.character(Date), sep = ""), tz="UTC"))%>%
         mutate(Stage = as.numeric(str_remove(Stage, "ft")))%>%
-        #Detecting the unit and converting kcfs to cfs
-        mutate(Flow = ifelse(str_detect(Flow, "kcfs"), as.numeric(str_remove(Flow, "kcfs"))*1000, as.numeric(str_remove(Flow, "cfs"))))%>%
+        #Detecting the unit and converting cfs to kcfs 
+        mutate(Flow = ifelse(str_detect(Flow, "kcfs"), as.numeric(str_remove(Flow, "kcfs")), as.numeric(str_remove(Flow, "cfs"))/1000))%>%
         #Handling no data value
         mutate(Flow = ifelse(Flow < -900, NA, Flow))%>%
         mutate(Stage = ifelse(Stage < -900, NA, Stage))%>%
@@ -422,7 +423,7 @@ NOAADataPull <- function()
         return(NOAAData)
     })
 }
-NOAAData <- NOAADataPull()
+#NOAAData <- NOAADataPull()
 #write.csv(NOAAData,"www/NOAAData_v1.csv")
 
 
@@ -659,7 +660,6 @@ GetCurrentReading <- function(Station_ID,Parameter,df)
             slice_head()%>%
             pull(Parameter)
         return(CurrentValue)
-
 }
 
 #Gets the current Unit
@@ -668,11 +668,11 @@ GetUnit <- function(inParameter,inUnit)
   
   if(inUnit == "F")
   {
-    Units <- c("CFU/100mL","CFU/100mL","F°","F°","NTU","ft","cfs")
+    Units <- c("CFU/100mL","CFU/100mL","F°","F°","NTU","ft","kcfs")
   }
   else
   {
-    Units <- c("CFU/100mL","CFU/100mL","C°","C°","NTU","ft","cfs")
+    Units <- c("CFU/100mL","CFU/100mL","C°","C°","NTU","ft","kcfs")
   }
   Parameters <- c("E Coli Concentration","Enterococcus Bacteria Concentration","Air Temperature", "Water Temperature", "Turbidity","Stage","Flow")
   UnitsParam <- data.frame(Units,Parameters)
@@ -1056,7 +1056,7 @@ output$TrendsPlot <- renderPlot({
   req(StationDataReactive$df)
   req(input$ParamSelect)
   click <- input$Map_marker_click
-  
+  print(StationDataReactive$df)
 if(!is.na(StationDataReactive$df$Value[1]))
   {
   ChartData <- StationDataReactive$df %>%

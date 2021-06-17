@@ -13,10 +13,9 @@ H02,FTMV2,Stage,,,,,,
 J03,SWPV2,Stage,,,,,,
 J04,SWPV2,Stage,,,,,,
 J05,JSFV2,Stage,,,,,,
-J08,RICV2,Stage,5,Caution,,7,High Caution,Red
-J08,RICV2,Stage,7,High Caution,Red,,,
+J08,RMDV2,Stage,5,Caution,Yellow,7,High Caution,Red
 J09,RICV2,Stage,,,,,,
-J10,RICV2,Stage,5,Caution,Yellow,7,High Caution,Red
+J10,RMDV2,Stage,5,Caution,Yellow,7,High Caution,Red
 J20,RMDV2,Stage,5,Caution,Yellow,7,High Caution,Red
 J21,RMDV2,Stage,5,Caution,Yellow,7,High Caution,Red
 J22,RMDV2,Stage,5,Caution,Yellow,7,High Caution,Red
