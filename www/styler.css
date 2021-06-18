@@ -98,7 +98,7 @@ body{
   
   align-self: flex-start;
   
-  background-image: url('./images/James+River+Watch_title_white.png');
+  background-image: url('./images/James+River+Watch_title_white_02.png');
     background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -233,7 +233,9 @@ body{
 /*START Tabset Styles*/
 
 .tab-pane{
-  height: 270px !important;
+  /*height: 270px !important;
+  */
+  height: auto !important;
 }
 #GaugePlot{
     margin: 10px 12% 0 12% !important;
@@ -488,7 +490,8 @@ body{
   
   .model-info-wrapper{
     padding: 0 10px 0 10px;
-    height: 400px;
+    height: auto;
+    /*height: 400px;*/
     display: table;
     border: 0px solid blue;
   }
@@ -498,7 +501,7 @@ body{
   }
   
   .tab-pane{
-     height: 170px !important;
+  /*   height: 170px !important;*/
   }
   
   #StationStatus > img {
