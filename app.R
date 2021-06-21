@@ -35,7 +35,7 @@ library(rlist)
 library(httr)
 library(jsonlite)
 library(plotrix)
-
+library(googlesheets4)
 
 
 #### Declaring for using ShinyJS
@@ -109,6 +109,9 @@ server <- function(input, output,session) {
 ###### ###### ###### ###### ###### ####
 ###### IMPORTS AND VAR DECLRATIONS ####
 ###### ###### ###### ###### ###### ####
+  
+#Removes requirement for Gsheet Authentification 
+gs4_deauth()
 
 #### WATER REPORTER VAR DECLERATION ### 
 #List of Parameter sets
@@ -137,7 +140,7 @@ Token <- "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1Ijoic3VwcG9ydEB3YXRlcnJlcG9yd
 
 ### NOAA VAR DECLERATION + FILE IMPORT ### 
 ### Hardcoded list of NOAA stations and their lat longs. 
-NOAAStationsList <- read_csv("www/NOAAStations_v1.csv")
+NOAAStationsList <- read_sheet("https://docs.google.com/spreadsheets/d/119EBdkkskx6Hc9_TXTbl2JwE4t_vTWo0qfkH7EUtyF4/edit#gid=207141266")
     
 ### !! For turning on and off NOAA Data !! ###
 NOAAData <- read_csv("www/NOAAData_v1.csv")
@@ -152,7 +155,9 @@ NOAAStationsMaxMin <- read_csv("www/NOAAStationsMaxMin_v1.csv")
 NOAAThresholds <- read_csv("www/NOAAThresholds_v2.csv")
 
 ### Thresholds for WR Stations using NOAA Data ### 
-WRNOAAThresholds <- read_csv("www/WRNOAAThresholds_v1.csv")
+#WRNOAAThresholds <- read_csv("www/WRNOAAThresholds_v1.csv")
+
+WRNOAAThresholds <- read_sheet("https://docs.google.com/spreadsheets/d/1lxxNuAPJzJJSqXGWGENSlkrAwHb3rhRBkhBMdJICsfg/edit#gid=35911052")
 
 #NOAA square iconset for use in Map 
 #Note that WR stations are circles - a default leaflet shape.
@@ -247,7 +252,7 @@ GetWRStations <- function()
         Parameter_ID <- ifelse(StationData$station_id[row] %in% EnteroStations,2587,2586)
         
         # Making the request 
-        URL <- paste("https://api.waterreporter.org/readings?station_id=",StationData$station_API_id[row],"&parameter_id=",Parameter_ID,"&limit=1&access_token=",Token, sep = "")
+        URL <- paste("https://api.waterreporter.org/readings?station_id=",StationData$station_API_id[row],"&parameter_id=",Parameter_ID,"&limit=5&access_token=",Token, sep = "")
         
         #Getting it
         Request <- GET(URL)
@@ -289,11 +294,11 @@ GetWRData <- function(StationID,ParameterName)
     
     ## Request
     Request <- GET(URL)
-    print(Request)
+
     ## Parsing
     jsonRequestText <- content(Request,as="text")
     parsed <- fromJSON(jsonRequestText)
-    print(parsed)
+
     ## Assembling data
     if(!is.null(parsed$dataset))
     {
@@ -319,7 +324,7 @@ GetWRData <- function(StationID,ParameterName)
     
     #turning into a list
     ThresholdValueList <- UpperBound[!is.na(UpperBound)]
-    print(ThresholdValueList)
+
     
     #selecting only ones which are above the current reading
     ThresholdValueListTrimmed <- list.filter(ThresholdValueList, . >= CurrentReading)
@@ -423,7 +428,7 @@ NOAADataPull <- function()
         return(NOAAData)
     })
 }
-#NOAAData <- NOAADataPull()
+NOAAData <- NOAADataPull()
 #write.csv(NOAAData,"www/NOAAData_v1.csv")
 
 
@@ -1056,7 +1061,7 @@ output$TrendsPlot <- renderPlot({
   req(StationDataReactive$df)
   req(input$ParamSelect)
   click <- input$Map_marker_click
-  print(StationDataReactive$df)
+
 if(!is.na(StationDataReactive$df$Value[1]))
   {
   ChartData <- StationDataReactive$df %>%
