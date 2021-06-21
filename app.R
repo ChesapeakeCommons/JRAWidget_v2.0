@@ -135,7 +135,7 @@ APICode <- c(2586,2587,2583,2584,2589)
 APIParameterCodes <- data.frame(Parameters,APICode)
   
 # API Token 
-Token <- "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1Ijoic3VwcG9ydEB3YXRlcnJlcG9ydGVyLm9yZyJ9.fkSv5ZUeX0oK_PCJl5K5nPBnci7X2FJY0mSnfO3LTjSPr31hAdZUJkGnYe4hjztt-XF-RSTvn_OA8Gd14MXK1S-YJ3_zcI4SUF-HqwFPNfha39L0nHBJ2gSB3HQLxOkJ4WvF3bdtezqtLNDv4e1KeqGIPCjVBw_wL2k68Zu-Q-BJUwM9V7v5nwqFIr9Enj7Y5ggEXrPycq-XA33B61f9GXYG1MuWoo4w6zLN4N8v95Bwn2f-f1OjpCeahkRHpGKp27GCiTxkT222XuxOak4g3U1IUu_32mYNYbOl0IyGu-paj8CNpLk2e8pdu38ZpRNWS74ixdVHRzNUr18mkZttjw"
+Token <- "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1IjoiZXJlaWxseUB0aGVqYW1lc3JpdmVyLm9yZyJ9.FILPCCWQquQm-qP1itvgKEi5gPduTNR5S4KNaBaL_yOkCs6oefy15C8fiUngkUThL5YRWMCl46UlwTVftQ-3PjJXqzBzpzST-2gGd0KB0jeF5xGTo_dEP5raCGiVi8MXmhu_sErwd8PxdxAUzrtOQxKdr9RTu0IA1ZA2LTDUOfJZAxQq3no8se5XHXdvfa3n_lYixPG043f8t2e9PKljN6_8OgSEHTZbr49brHkgFzVHRvAwQ32AuIV4FWH9MBwZzV7mmc5VOp9oF9ll7r0uwT0-kvVfHF-Kw7okzDYPcKHD5k1tICTYOA4rApTdQALn5OFFpX8F1cfU0xJgvIpU2w"
 
 
 ### NOAA VAR DECLERATION + FILE IMPORT ### 
@@ -229,7 +229,7 @@ GetWRStations <- function()
     ## Selecting only the columns we need
     StationData <- data.frame(Data$raw_id,Data$name,Data$id,Data$lat,Data$lng,Data$description,Data$image_url) 
     
-    #C#leaning Var Names 
+    #Cleaning Var Names 
     colnames(StationData) <- gsub('Data.','',colnames(StationData))
     
     StationData <- StationData %>%
@@ -508,7 +508,6 @@ GetAllStations <- function()
 { 
   
   NOAAStations <- NOAAStationsList %>%
-    mutate(description = "")%>%
     mutate(ColorHex = "")%>%
     mutate(station_API_id = "")%>%
     mutate(CurrentReading = 0)
@@ -705,6 +704,7 @@ GetUnit <- function(inParameter,inUnit)
 
 ### Renders the Leaflet Map
 Stations <- GetAllStations()
+
 output$Map <- renderLeaflet({
 
     WRStations <- Stations %>%
@@ -880,7 +880,10 @@ output$StationText <- renderUI({
       pull(NOAAstation_id)
     
     NOAAStationName <- filter(Stations, station_id %in% NOAAStation_ID)%>%
-      pull(station_name)
+                       pull(station_name)
+    
+    StationDescription <- filter(Stations, station_id %in% click$id)%>%
+                          pull(description)
     
     tagList(
         tags
@@ -893,8 +896,7 @@ output$StationText <- renderUI({
         div(style='float:left; display:block; width: 100%; border:0px solid red; margin-bottom: 15px',
             paste(LastSampled,".", sep = ""),
             HTML("<br/>"),
-            paste0("This site is monitored by ", 
-                   ifelse(GetStationType(click$id) == 1, "the National Oceanic and Atmospheric Administration (NOAA).", "James River Association Volunteers.")),
+            paste(StationDescription),
             paste0(ifelse(identical(NOAAStationName,char0),"",paste("Stage and Flow data are from ",NOAAStationName,".", sep = ""))),
             HTML("<br/>"),
            uiOutput("MoreInfo")
