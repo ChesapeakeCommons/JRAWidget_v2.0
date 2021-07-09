@@ -5,7 +5,7 @@
 ## Program Structure 
 ## UI Side 
 ## Server Side 
-##   Importans and Variable Decleartions 
+##   Imports and Variable Declerations 
 ##   API Request Functions 
 ##   Helper Functions 
 ##   Map 
