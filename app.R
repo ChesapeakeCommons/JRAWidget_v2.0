@@ -5,7 +5,7 @@
 ## Program Structure 
 ## UI Side 
 ## Server Side 
-##   Var Decleration 
+##   Importans and Variable Decleartions 
 ##   API Request Functions 
 ##   Helper Functions 
 ##   Map 
@@ -114,7 +114,7 @@ server <- function(input, output,session) {
 gs4_deauth()
 
 #### WATER REPORTER VAR DECLERATION ### 
-#List of Parameter sets
+#Parameter Sets
 Parameters <- c("E Coli Concentration","Enterococcus Bacteria Concentration","Air Temperature", "Water Temperature", "Turbidity") 
 EnteroParameters <- c("Enterococcus Bacteria Concentration", "Air Temperature", "Water Temperature", "Turbidity")
 ColiParameters <- c("E Coli Concentration", "Air Temperature", "Water Temperature", "Turbidity")
@@ -137,6 +137,10 @@ APIParameterCodes <- data.frame(Parameters,APICode)
 # API Token 
 Token <- "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1IjoiZXJlaWxseUB0aGVqYW1lc3JpdmVyLm9yZyJ9.FILPCCWQquQm-qP1itvgKEi5gPduTNR5S4KNaBaL_yOkCs6oefy15C8fiUngkUThL5YRWMCl46UlwTVftQ-3PjJXqzBzpzST-2gGd0KB0jeF5xGTo_dEP5raCGiVi8MXmhu_sErwd8PxdxAUzrtOQxKdr9RTu0IA1ZA2LTDUOfJZAxQq3no8se5XHXdvfa3n_lYixPG043f8t2e9PKljN6_8OgSEHTZbr49brHkgFzVHRvAwQ32AuIV4FWH9MBwZzV7mmc5VOp9oF9ll7r0uwT0-kvVfHF-Kw7okzDYPcKHD5k1tICTYOA4rApTdQALn5OFFpX8F1cfU0xJgvIpU2w"
 
+### Thresholds for WR Stations using NOAA Data ### 
+#WRNOAAThresholds <- read_csv("www/WRNOAAThresholds_v1.csv")
+
+WRNOAAThresholds <- read_sheet("https://docs.google.com/spreadsheets/d/1lxxNuAPJzJJSqXGWGENSlkrAwHb3rhRBkhBMdJICsfg/edit#gid=35911052")
 
 ### NOAA VAR DECLERATION + FILE IMPORT ### 
 ### Hardcoded list of NOAA stations and their lat longs. 
@@ -145,19 +149,11 @@ NOAAStationsList <- read_sheet("https://docs.google.com/spreadsheets/d/119EBdkks
 ### !! For turning on and off NOAA Data !! ###
 NOAAData <- read_csv("www/NOAAData_v1.csv")
 
-### More info for NOAA Stations ###
-MoreInfo <- read_csv("www/MoreInfo_v1.csv")
-
 ### Values for controlling NOAA Min Max chart settings ###
 NOAAStationsMaxMin <- read_csv("www/NOAAStationsMaxMin_v1.csv")
 
 ### NOAA Stations Threshold ### 
 NOAAThresholds <- read_csv("www/NOAAThresholds_v2.csv")
-
-### Thresholds for WR Stations using NOAA Data ### 
-#WRNOAAThresholds <- read_csv("www/WRNOAAThresholds_v1.csv")
-
-WRNOAAThresholds <- read_sheet("https://docs.google.com/spreadsheets/d/1lxxNuAPJzJJSqXGWGENSlkrAwHb3rhRBkhBMdJICsfg/edit#gid=35911052")
 
 #NOAA square iconset for use in Map 
 #Note that WR stations are circles - a default leaflet shape.
@@ -337,7 +333,6 @@ GetWRData <- function(StationID,ParameterName)
     {
     ThresholdValue <- max(ThresholdValueList)
     }
-    print(ThresholdValue)
     # Entering into the Data frame
     Data$ThresholdValue <- ThresholdValue
     
@@ -654,6 +649,7 @@ GetColorName <- function(inColorHex)
 }
 
 #Gets the most recent reading
+# Takes a station ID, Parameter, and DF
 GetCurrentReading <- function(Station_ID,Parameter,df)
 {
         CurrentValue <- df %>%
@@ -667,6 +663,7 @@ GetCurrentReading <- function(Station_ID,Parameter,df)
 }
 
 #Gets the current Unit
+# Takes a Parameter and a F or C unit
 GetUnit <- function(inParameter,inUnit)
 {
   
@@ -722,7 +719,7 @@ output$Map <- renderLeaflet({
         addMarkers(data = NOAAStations, lng = ~Longitude, lat = ~Latitude, layerId = ~ station_id, label = ~station_name, icon = ~IconSet[ColorHex])
 })
 
-## Reacts to Map Marker Click to make data for the modal
+## Reacts to Map Marker Click and sets the StationDataReactive and ParamListReactive
 observeEvent(input$Map_marker_click, ignoreNULL = TRUE,{
   click <- input$Map_marker_click
   
@@ -805,6 +802,8 @@ output$ParameterSelect <- renderUI({
   selectInput("ParamSelect","", choices = ParamListReactive$X)
 })
 
+
+## Observes the ParamerSelect pulldown and sets the right StationDataReactive
 observeEvent(input$ParamSelect,ignoreNULL = TRUE,ignoreInit = TRUE,{
     req(RenderFlag$X)
     click <- input$Map_marker_click
