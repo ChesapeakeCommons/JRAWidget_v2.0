@@ -1,5 +1,4 @@
 station_id,Parameter,ValueOne,ValueLabelOne,ValueOneColor,ValueTwo,ValueTwoColor,ValueTwoLabel,ValueThree,ValueThreeColor,ValueThreeLabel,ValueFour,ValueFourColor,ValueFourLabel
-RICV2,Stage,3.5,Caution,Yellow,7,Green,Fair,9,Yellow,Caution,15,Red,High Caution
 MTCV2,Stage,2.4,Caution,Yellow,5.5,Green,Fair,13,Red,High Caution,,,
 RMDV2,Stage,3.5,Caution,Yellow,7,Green,Fair,9,Yellow,Caution,15,Red,High Caution
 SVEV2,Stage,2,Caution,Yellow,6,Green,Fair,8,Yellow,Caution,20,Red,High Caution
