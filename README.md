@@ -1,7 +1,7 @@
-Repo Title
+JRA RiverWatch 2.0 README
 ---------------
 
-Repo Summary
+This document provides an overview of the James RiverWatch 2.0 application, its contents, and how it functions.
 ---------------
 
 Quick Links
@@ -13,11 +13,11 @@ Quick Links
 
 [Data](https://drive.google.com/drive/u/0/folders/1DsVJ0CLUZBJyEHH34rJhhjjJelVywnvn)
 
-[Shinyapps.io ](https://www.shinyapps.io/)
+[Shinyapps.io](https://www.shinyapps.io/)
 
-This document:
+[This document](https://docs.google.com/document/d/1dHaQ7w8Ttfirp27Yuaoji84n7KgoQs-Qo83T9WIb8-Q/)
 
-https://docs.google.com/document/d/1dHaQ7w8Ttfirp27Yuaoji84n7KgoQs-Qo83T9WIb8-Q/
+
 
 Version Control and Access 
 ---------------
