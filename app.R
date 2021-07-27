@@ -209,7 +209,7 @@ DefaultImage <- "https://www.savethesound.org/wp-content/uploads/2021/05/orient-
 ###### API FUNCTIONS ####
 ###### ###### ######  ###
 
-## GetWRStations
+## GetwStations
 ## Returns a data frame containing station_id, station_name, station_API_id, station_key, Latitude, Longitude and Type
 ## Used in GetAllStations
 GetWRStations <- function()
@@ -294,7 +294,9 @@ GetWRData <- function(StationID,ParameterName)
     ## Parsing
     jsonRequestText <- content(Request,as="text")
     parsed <- fromJSON(jsonRequestText)
-
+    
+    parsed$data$color <- ifelse(is.null(parsed$data$color),"#999999",parsed$data$color)
+    
     ## Assembling data
     if(!is.null(parsed$dataset))
     {
@@ -303,7 +305,7 @@ GetWRData <- function(StationID,ParameterName)
                 rename("Date" = parsed.data.collection_date,
                        "Value" = parsed.data.value,
                        "ColorHex" = parsed.data.color)%>%
-                mutate(ColorHex = as.character(ColorHex))%>%
+                        mutate(ColorHex = as.character(ColorHex))%>%
                 ## Sometimes WR sends a #616161 or a null color, convert to grey here
                 mutate(ColorHex = as.character(ifelse(ColorHex == "#616161" | is.null(ColorHex), "#999999",ColorHex)))%>%
                 mutate(Date = as.POSIXct(Date, origin = "1970-01-01", tz = "UTC"))
@@ -338,7 +340,6 @@ GetWRData <- function(StationID,ParameterName)
     
     # Lastly adding the station id
     Data$station_id <- StationID
-    
     }
     
     ##### If the request for data comes back empty, we handle it here ###
