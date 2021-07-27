@@ -295,6 +295,7 @@ GetWRData <- function(StationID,ParameterName)
     jsonRequestText <- content(Request,as="text")
     parsed <- fromJSON(jsonRequestText)
     
+    ## Handling if color does not get returned 
     parsed$data$color <- ifelse(is.null(parsed$data$color),"#999999",parsed$data$color)
     
     ## Assembling data
