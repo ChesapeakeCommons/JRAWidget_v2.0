@@ -248,7 +248,7 @@ GetWRStations <- function()
         Parameter_ID <- ifelse(StationData$station_id[row] %in% EnteroStations,2587,2586)
         
         # Making the request 
-        URL <- paste("https://api.waterreporter.org/readings?station_id=",StationData$station_API_id[row],"&parameter_id=",Parameter_ID,"&limit=5&access_token=",Token, sep = "")
+        URL <- paste("https://api.waterreporter.org/readings?station_id=",StationData$station_API_id[row],"&parameter_id=",Parameter_ID,"&limit=1&include_graph=0&access_token=",Token, sep = "")
         
         #Getting it
         Request <- GET(URL)
@@ -294,9 +294,13 @@ GetWRData <- function(StationID,ParameterName)
     ## Parsing
     jsonRequestText <- content(Request,as="text")
     parsed <- fromJSON(jsonRequestText)
+ 
     
-    ## Handling if color does not get returned 
-    parsed$data$color <- ifelse(is.null(parsed$data$color),"#999999",parsed$data$color)
+    ## Handling if color does not get returned
+    if(is.null(parsed$data$color))
+    {
+    parsed$data$color <- "#999999"
+    }
     
     ## Assembling data
     if(!is.null(parsed$dataset))
@@ -425,7 +429,7 @@ NOAADataPull <- function()
         return(NOAAData)
     })
 }
-NOAAData <- NOAADataPull()
+#NOAAData <- NOAADataPull()
 #write.csv(NOAAData,"www/NOAAData_v1.csv")
 
 
@@ -719,6 +723,8 @@ output$Map <- renderLeaflet({
         addPolygons(data = River, color = "#104a77", opacity = 1, stroke = TRUE, weight = 1, label = "James River and Tributaries")%>%
         addCircleMarkers(data = WRStations, lng = ~Longitude, lat = ~Latitude, layerId = ~ station_id, label = ~station_name, fillColor = ~ColorHex, color = "black", fillOpacity = 1, weight = 1)%>%
         addMarkers(data = NOAAStations, lng = ~Longitude, lat = ~Latitude, layerId = ~ station_id, label = ~station_name, icon = ~IconSet[ColorHex])
+    
+       # showModal(WarningModal)
 })
 
 ## Reacts to Map Marker Click and sets the StationDataReactive and ParamListReactive
@@ -783,6 +789,7 @@ observeEvent(input$Map_marker_click, ignoreNULL = TRUE,{
 ###### ###### ######
 ###### MODAL  #####
 ###### ###### ###### 
+
 
 ### Modal Decleration 
 Modal <-  modalDialog(
