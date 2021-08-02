@@ -429,7 +429,7 @@ NOAADataPull <- function()
         return(NOAAData)
     })
 }
-NOAAData <- NOAADataPull()
+#NOAAData <- NOAADataPull()
 #write.csv(NOAAData,"www/NOAAData_v1.csv")
 
 
